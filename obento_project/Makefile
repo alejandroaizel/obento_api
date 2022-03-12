@@ -8,3 +8,5 @@ revert-migration:
 	python3 manage.py migrate $(APP_NAME) $(PREV_MIG)
 run-server:
 	python3 manage.py runserver
+shell:
+	python3 manage.py shell
