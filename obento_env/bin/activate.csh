@@ -8,7 +8,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV "/home/pepe-wtf98/Escritorio/TMI/Github/obento_api/obento_env"
+setenv VIRTUAL_ENV "/home/pepe-wtf9817/Escritorio/TMI/obento_api/obento_env"
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/bin:$PATH"

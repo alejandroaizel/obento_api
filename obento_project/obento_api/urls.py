@@ -11,5 +11,7 @@ router = routers.DefaultRouter()
 urlpatterns = [
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('ingredients', views.ingredients_list)
+    path('ingredients', views.ingredients_list),
+    path('recipes', views.recipes_list),
+    path('recipes/<int:recipe_id>', views.get_delete_recipe)
 ]
