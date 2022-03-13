@@ -1,0 +1,27 @@
+---
+- name: Remove previous Obento instalation
+  ansible.builtin.file:
+    path: /home/ubuntu/obento
+    state: absent
+
+- name: Create Obento directory
+  ansible.builtin.file:
+    path: /home/ubuntu/obento
+    owner: ubuntu
+    group: ubuntu
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Get Obento repository and checkout to dev branch
+  ansible.builtin.git:
+    repo: 'git@github.com:alejandroaizel/obento_api.git'
+    accept_hostkey: yes
+    dest: /home/ubuntu/obento
+    version: dev
+  become: no
+
+- name: Install pip dependencies
+  ansible.builtin.shell: python3 -m pip install -r requirements.txt
+  args:
+    chdir: /home/ubuntu/obento/obento_project

@@ -1,0 +1,20 @@
+---
+- name: Install mysql-server
+  ansible.builtin.package:
+    name:
+      - mysql-server
+      - libmysqlclient-dev
+    state: present
+
+- name: Set mysql configuration
+  ansible.builtin.template:
+    src: my.cnf
+    dest: /etc/mysql/my.cnf
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Start service mysql-server, if not started
+  ansible.builtin.service:
+    name: mysql
+    state: started
