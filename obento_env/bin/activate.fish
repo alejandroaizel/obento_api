@@ -29,7 +29,7 @@ end
 # unset irrelevant variables
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/home/pepe-wtf98/Escritorio/TMI/Github/obento_api/obento_env"
+set -gx VIRTUAL_ENV "/home/pepe-wtf9817/Escritorio/TMI/obento_api/obento_env"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH
