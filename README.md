@@ -40,6 +40,12 @@ make generate-migrations
 make migrate
 ```
 
+* Revert migration
+
+```bash
+make migrate PREV_MIG=XXXX
+```
+
 * Run server
 
 ```bash
