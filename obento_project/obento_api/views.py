@@ -24,29 +24,44 @@ def recipes_list(request):
             recipe_data = get_compound(recipe)
             result.append(recipe_data)
 
-        return JsonResponse(result, safe=False)
+        return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
     elif request.method == 'POST':
         recipe_data = JSONParser().parse(request)
-        recipe_data['estimated_cost'] = 0
-
         recipe_serializer = RecipeSerializer(data=recipe_data)
 
-        if recipe_serializer.is_valid():
+        message = {}
+
+        if 'category' not in recipe_data:
+            message['category'] = ["This field is required."]
+        
+        if 'ingredients' not in recipe_data:
+            message['ingredients'] = ["This field is required."]
+
+
+        if recipe_serializer.is_valid() and not message:
             recipe_id = recipe_serializer.create(validated_data=recipe_data)
             return JsonResponse({'id': recipe_id}, status=status.HTTP_201_CREATED)
 
-        return JsonResponse(recipe_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        message.update(recipe_serializer.errors)
+        return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET', 'DELETE'])
 def get_delete_recipe(request, recipe_id):
     if request.method == 'GET':
-        recipe = Recipe.objects.get(pk=recipe_id)
-        recipe_data = get_compound(recipe)
-        return JsonResponse(recipe_data)
+        try:
+            recipe = Recipe.objects.get(pk=recipe_id)
+            recipe_data = get_compound(recipe)
+            return JsonResponse(recipe_data)
+        except Recipe.DoesNotExist:
+            return JsonResponse({'message': f'User {recipe_id} doesn\'t exist.'}, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
-        recipe = Recipe.objects.filter(id=recipe_id).delete()
-        return JsonResponse(recipe, status=status.HTTP_200_OK, safe=False)
+        try:
+            recipe = Recipe.objects.get(pk=recipe_id)
+            recipe.delete()    
+            return JsonResponse({'message': f'User {recipe_id} deleted.'}, status=status.HTTP_200_OK)
+        except Recipe.DoesNotExist:
+            return JsonResponse({'message': f'User {recipe_id} doesn\'t exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -54,7 +69,7 @@ def ingredients_list(request):
     if request.method == 'GET':
         ingredients = Ingredient.objects.all()
         ingredients_serializer = IngredientSerializer(ingredients, many=True)
-        return JsonResponse(ingredients_serializer.data, safe=False)
+        return JsonResponse(ingredients_serializer.data, status=status.HTTP_200_OK, safe=False)
 
 def get_compound(recipe):
     recipe_serializer = RecipeSerializer(recipe)
@@ -63,10 +78,12 @@ def get_compound(recipe):
     estimated_cost = 0.0
     compounds = []
 
+    recipe_data['category'] = recipe.category.description
+
     for compound in Compound.objects.raw('''SELECT COMPOUND.id, ingredient_id, quantity, name, 
                                             category, unit, unitary_price, kcalories,
-                                            icon_name FROM obento_api_compound AS COMPOUND
-                                            INNER JOIN obento_api_ingredient AS INGREDIENT
+                                            icon_name FROM compound AS COMPOUND
+                                            INNER JOIN ingredient AS INGREDIENT
                                             ON COMPOUND.ingredient_id=INGREDIENT.id AND
                                             COMPOUND.recipe_id = %s''', [recipe.id]):
         compound_dict = vars(compound)

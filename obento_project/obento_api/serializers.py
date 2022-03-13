@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import Recipe, Ingredient, Compound
+from .models import Recipe, Ingredient, Compound, RecipeCategory
 
 
 class CompoundSerializer(serializers.ModelSerializer):
@@ -23,12 +23,14 @@ class RecipeSerializer(serializers.ModelSerializer):
                   'description',
                   'category',
                   'steps',
-                  'estimated_cost',
+                  'cooking_time',
                   'is_lunch',
                   'image_path')
         
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
+        recipe_category = RecipeCategory.objects.get(pk=validated_data['category'])
+        validated_data['category'] = recipe_category
         recipe = Recipe.objects.create(**validated_data)
 
         for ingredient_data in ingredients_data:
