@@ -1,4 +1,4 @@
-# Created by https://www.toptal.com/developers/gitignore/api/django
+le# Created by https://www.toptal.com/developers/gitignore/api/django
 # Edit at https://www.toptal.com/developers/gitignore?templates=django
 
 ### Django ###
@@ -6,6 +6,7 @@
 *.pot
 *.pyc
 __pycache__/
+obento_env/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal

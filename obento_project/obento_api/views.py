@@ -2,17 +2,24 @@
 
 from ast import Return
 from django.http import JsonResponse
+from django.contrib.auth.models import User
+
 from rest_framework import viewsets
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
 
 from .models import Compound, Ingredient
 from rest_framework.decorators import api_view
 from rest_framework.parsers import JSONParser
-from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework import viewsets, generics, status
 
 from obento_api.models import Recipe
-from obento_api.serializers import RecipeSerializer, IngredientSerializer
+from obento_api.serializers import RecipeSerializer, IngredientSerializer, RegisterSerializer
 import json
-
 
 @api_view(['GET', 'POST'])
 def recipes_list(request):
@@ -33,7 +40,7 @@ def recipes_list(request):
 
         if 'category' not in recipe_data:
             message['category'] = ["This field is required."]
-        
+
         if 'ingredients' not in recipe_data:
             message['ingredients'] = ["This field is required."]
 
@@ -58,7 +65,7 @@ def get_delete_recipe(request, recipe_id):
     elif request.method == 'DELETE':
         try:
             recipe = Recipe.objects.get(pk=recipe_id)
-            recipe.delete()    
+            recipe.delete()
             return JsonResponse({'message': f'User {recipe_id} deleted.'}, status=status.HTTP_200_OK)
         except Recipe.DoesNotExist:
             return JsonResponse({'message': f'User {recipe_id} doesn\'t exist.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -80,7 +87,7 @@ def get_compound(recipe):
 
     recipe_data['category'] = recipe.category.description
 
-    for compound in Compound.objects.raw('''SELECT COMPOUND.id, ingredient_id, quantity, name, 
+    for compound in Compound.objects.raw('''SELECT COMPOUND.id, ingredient_id, quantity, name,
                                             category, unit, unitary_price, kcalories,
                                             icon_name FROM compound AS COMPOUND
                                             INNER JOIN ingredient AS INGREDIENT
@@ -92,11 +99,37 @@ def get_compound(recipe):
         compounds.append(compound_dict)
         kcalories += compound_dict['kcalories'] * compound_dict['quantity']
         estimated_cost += compound_dict['unitary_price'] * compound_dict['quantity']
-    
+
     recipe_data['kcalories'] = kcalories
     recipe_data['estimated_cost'] = estimated_cost
     recipe_data['ingredients'] = compounds
 
     return recipe_data
 
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = RegisterSerializer
 
+class LogoutView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh_token"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutAllView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        tokens = OutstandingToken.objects.filter(user_id=request.user.id)
+        for token in tokens:
+            t, _ = BlacklistedToken.objects.get_or_create(token=token)
+
+        return Response(status=status.HTTP_205_RESET_CONTENT)
