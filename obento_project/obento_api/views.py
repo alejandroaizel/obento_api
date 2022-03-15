@@ -9,16 +9,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-
-from .models import Compound, Ingredient
 from rest_framework.decorators import api_view
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework import viewsets, generics, status
 
-from obento_api.models import Recipe
-from obento_api.serializers import RecipeSerializer, IngredientSerializer, RegisterSerializer
+
+from obento_api.models import *
+from obento_api.serializers import *
 import json
 
 @api_view(['GET', 'POST'])
@@ -78,6 +77,7 @@ def ingredients_list(request):
         ingredients_serializer = IngredientSerializer(ingredients, many=True)
         return JsonResponse(ingredients_serializer.data, status=status.HTTP_200_OK, safe=False)
 
+
 def get_compound(recipe):
     recipe_serializer = RecipeSerializer(recipe)
     recipe_data = recipe_serializer.data
@@ -106,10 +106,12 @@ def get_compound(recipe):
 
     return recipe_data
 
+
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
+
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -124,6 +126,7 @@ class LogoutView(APIView):
         except Exception as e:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
+
 class LogoutAllView(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -133,3 +136,46 @@ class LogoutAllView(APIView):
             t, _ = BlacklistedToken.objects.get_or_create(token=token)
 
         return Response(status=status.HTTP_205_RESET_CONTENT)
+
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = RegisterSerializer
+
+
+class MenuView():
+    """
+    Retrieve, post or delete a Menu.
+    """
+    def get_object(self, pk):
+        try:
+            return Schedule.objects.get(pk=pk)
+        except Snippet.DoesNotExist:
+            raise Http404
+
+    def get(self, request, pk, format=None):
+        snippet = self.get_object(pk)
+        serializer = SnippetSerializer(snippet)
+        return Response(serializer.data)
+
+    def post(self, request, format=None):
+        menu_data = JSONParser().parse(request)
+        menu_serializer = ScheduleSerializer(data=menu_data)
+
+        message = {}
+
+        if 'recipe_id' not in menu_data:
+            message['recipe_id'] = ["This field is required."]
+
+        if menu_serializer.is_valid() and not message:
+            menu = menu_serializer.create(validated_data=menu_data)
+            return JsonResponse(menu, status=status.HTTP_201_CREATED)
+
+        message.update(menu_serializer.errors)
+        return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        snippet = self.get_object(pk)
+        snippet.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

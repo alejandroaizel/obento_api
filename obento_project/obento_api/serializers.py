@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Recipe, Ingredient, Compound, RecipeCategory
+from .models import Recipe, Ingredient, Compound, RecipeCategory, Schedule
 
 
 class CompoundSerializer(serializers.ModelSerializer):
@@ -43,7 +43,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         return recipe.id
 
 
-class IngredientSerializer(serializers.HyperlinkedModelSerializer):
+class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = ('id',
@@ -53,6 +53,8 @@ class IngredientSerializer(serializers.HyperlinkedModelSerializer):
                   'unitary_price',
                   'kcalories',
                   'icon_name')
+
+                
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
             required=True,
@@ -80,3 +82,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+
+class ScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Schedule
+        fields = ('date',
+                  'is_lunch')
+    
+    def create(self, validated_data):
+        recipe = Recipe.objects.get(pk=validated_data['recipe_id'])
+        schedule = Schedule.objects.create(recipe=recipe, date=validated_data['date'], is_lunch=validated_data['is_lunch'])
+
+        return schedule
