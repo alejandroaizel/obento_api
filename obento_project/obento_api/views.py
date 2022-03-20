@@ -23,6 +23,7 @@ from django.db.models import Q
 
 import datetime
 
+
 @api_view(['GET', 'POST'])
 def recipes_list(request):
     if request.method == 'GET':
@@ -36,6 +37,11 @@ def recipes_list(request):
         return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
     elif request.method == 'POST':
         recipe_data = JSONParser().parse(request)
+
+        if 'steps' in recipe_data:
+            steps = recipe_data['steps']
+            recipe_data['steps'] = '||'.join(steps)
+
         recipe_serializer = RecipeSerializer(data=recipe_data)
 
         message = {}
@@ -46,10 +52,13 @@ def recipes_list(request):
         if 'ingredients' not in recipe_data:
             message['ingredients'] = ["This field is required."]
 
-
         if recipe_serializer.is_valid() and not message:
             recipe_id = recipe_serializer.create(validated_data=recipe_data)
-            return JsonResponse({'id': recipe_id}, status=status.HTTP_201_CREATED)
+
+            if not recipe_id:
+                return JsonResponse({'message': recipe_id}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return JsonResponse({'id': recipe_id}, status=status.HTTP_201_CREATED)
 
         message.update(recipe_serializer.errors)
         return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
@@ -73,6 +82,33 @@ def get_delete_recipe(request, recipe_id):
             return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UserRecipeList(APIView):
+    """
+    Retrieve user recipes
+    """
+
+    def get(self, request, user_id, format=None):
+        recipes = Recipe.objects.filter(user=user_id)
+        result = []
+
+        for recipe in recipes:
+            recipe_data = get_compound(recipe)
+            result.append(recipe_data)
+
+        return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
+
+
+class RecipeCategoryList(APIView):
+    """
+    Retrieve recipe categories
+    """
+
+    def get(self, request, format=None):
+        recipe_categories = RecipeCategory.objects.all()
+        recipe_categories_serializer = RecipeCategorySerializer(recipe_categories, many=True)
+        return JsonResponse(recipe_categories_serializer.data, status=status.HTTP_200_OK, safe=False)
+
+
 @api_view(['GET'])
 def ingredients_list(request):
     if request.method == 'GET':
@@ -89,6 +125,7 @@ def get_compound(recipe):
     compounds = []
 
     recipe_data['category'] = recipe.category.description
+    recipe_data['steps'] = recipe_data['steps'].split('||')
 
     for compound in Compound.objects.raw('''SELECT COMPOUND.id, ingredient_id, quantity, name,
                                             category, unit, unitary_price, kcalories,
@@ -101,13 +138,15 @@ def get_compound(recipe):
         compound_dict.pop('id')
         compounds.append(compound_dict)
         kcalories += compound_dict['kcalories'] * compound_dict['quantity']
-        estimated_cost += compound_dict['unitary_price'] * compound_dict['quantity']
+        estimated_cost += compound_dict['unitary_price'] * \
+            compound_dict['quantity']
 
     recipe_data['kcalories'] = kcalories
     recipe_data['estimated_cost'] = estimated_cost
     recipe_data['ingredients'] = compounds
 
     return recipe_data
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -152,7 +191,7 @@ class ScheduleList(APIView):
     """
 
     RECIPES_PER_DAY = 2
-  
+
     def get(self, request, format=None):
 
         try:
@@ -169,11 +208,13 @@ class ScheduleList(APIView):
             return Response(message, status=status.HTTP_400_BAD_REQUEST)
 
         if 'start_date' in schedule_data:
-            start_date = datetime.datetime.strptime(schedule_data['start_date'], '%d-%m-%y')
+            start_date = datetime.datetime.strptime(
+                schedule_data['start_date'], '%d-%m-%y')
             q &= Q(date__gte=start_date)
-        
+
         if 'end_date' in schedule_data:
-            end_date = datetime.datetime.strptime(schedule_data['end_date'], '%d-%m-%y')
+            end_date = datetime.datetime.strptime(
+                schedule_data['end_date'], '%d-%m-%y')
             q &= Q(date__lte=end_date)
 
         if 'is_lunch' in schedule_data:
@@ -181,15 +222,14 @@ class ScheduleList(APIView):
 
         schedules = Schedule.objects.filter(q)
         schedules_data = []
-        
+
         for schedule in schedules:
             schedule_serializer = ScheduleSerializer(schedule)
             schedule_data = schedule_serializer.data
             schedule_data['recipe'] = get_compound(schedule.recipe)
             schedules_data.append(schedule_data)
-        
-        return JsonResponse(schedules_data, status=status.HTTP_200_OK, safe=False)
 
+        return JsonResponse(schedules_data, status=status.HTTP_200_OK, safe=False)
 
     def post(self, request, format=None):
 
@@ -205,7 +245,9 @@ class ScheduleList(APIView):
         schedule_serializer = ScheduleSerializer(data=schedule_data)
 
         if schedule_serializer.is_valid():
-            delta = datetime.date(end_date.year, end_date.month, end_date.day) - datetime.date(start_date.year, start_date.month, start_date.day)
+            delta = datetime.date(end_date.year, end_date.month, end_date.day) - \
+                datetime.date(start_date.year,
+                              start_date.month, start_date.day)
             print(delta.days)
             num_recipes = (delta.days + 1) * self.RECIPES_PER_DAY
             print(num_recipes)
@@ -216,7 +258,8 @@ class ScheduleList(APIView):
             i = 1
             is_lunch = True
             for recipe in recipes:
-                menu_id = schedule_serializer.create(schedule_data, start_date, recipe, is_lunch)
+                menu_id = schedule_serializer.create(
+                    schedule_data, start_date, recipe, is_lunch)
                 result.append(menu_id)
 
                 is_lunch = False
@@ -262,14 +305,16 @@ class ScheduleDetail(APIView):
 
             if 'is_lunch' not in schedule_data:
                 message['is_lunch'] = ["This field is required."]
-        
+
             if not message:
                 try:
-                    date = datetime.datetime.strptime(schedule_data['date'], '%d-%m-%y')
-                    schedule = Schedule.objects.filter(user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
+                    date = datetime.datetime.strptime(
+                        schedule_data['date'], '%d-%m-%y')
+                    schedule = Schedule.objects.filter(
+                        user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
                 except Schedule.DoesNotExist:
                     return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
-            
+
                 if len(schedule) == 1:
                     schedule_serializer = ScheduleSerializer(schedule[0])
                     schedule_data = schedule_serializer.data
@@ -280,7 +325,6 @@ class ScheduleDetail(APIView):
 
             return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
 
-
     def delete(self, menu_id):
         try:
             schedule = Schedule.objects.get(pk=menu_id)
@@ -288,4 +332,3 @@ class ScheduleDetail(APIView):
             return Response({'message': f'Menu {menu_id} deleted.'}, status=status.HTTP_204_NO_CONTENT)
         except Schedule.DoesNotExist:
             return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
-

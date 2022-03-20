@@ -28,20 +28,28 @@ class RecipeSerializer(serializers.ModelSerializer):
                   'steps',
                   'cooking_time',
                   'is_lunch',
-                  'image_path')
+                  'image_path',
+                  'servings',
+                  'user')
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
         recipe_category = RecipeCategory.objects.get(
             pk=validated_data['category'])
+
         validated_data['category'] = recipe_category
         recipe = Recipe.objects.create(**validated_data)
 
-        for ingredient_data in ingredients_data:
-            ingredient = Ingredient.objects.get(
-                pk=ingredient_data['ingredient_id'])
-            Compound.objects.create(
-                recipe=recipe, ingredient=ingredient, quantity=ingredient_data['quantity'])
+        try:
+            for ingredient_data in ingredients_data:
+                ingredient = Ingredient.objects.get(
+                    pk=ingredient_data['ingredient_id'])
+                Compound.objects.create(
+                    recipe=recipe, ingredient=ingredient, quantity=ingredient_data['quantity'])
+        except:
+            recipe.delete()
+            return 'Ingredient {} doesnt\'t exist.'.format(ingredient_data['ingredient_id'])
+
         return recipe.id
 
 
@@ -55,6 +63,7 @@ class IngredientSerializer(serializers.ModelSerializer):
                   'unitary_price',
                   'kcalories',
                   'icon_name')
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
@@ -85,6 +94,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return user
 
+
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
@@ -96,5 +106,12 @@ class ScheduleSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data, date, recipe, is_lunch):
         schedule = Schedule.objects.create(user=validated_data['user'], recipe=recipe, date=date,
-                                        is_lunch=is_lunch)
+                                           is_lunch=is_lunch)
         return schedule.id
+
+
+class RecipeCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecipeCategory
+        fields = ('id',
+                  'description')

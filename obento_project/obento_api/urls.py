@@ -14,8 +14,10 @@ router = routers.DefaultRouter()
 urlpatterns = [
     path('', include(router.urls)),
     path('ingredients', views.ingredients_list),
+    path('recipe_categories', views.RecipeCategoryList.as_view(), name='recipe_category_list'),
     path('recipes', views.recipes_list),
     path('recipes/<int:recipe_id>', views.get_delete_recipe),
+    path('user/<int:user_id>/recipes', views.UserRecipeList.as_view(), name='user_recipes_list'),
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

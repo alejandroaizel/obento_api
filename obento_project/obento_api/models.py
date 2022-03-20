@@ -56,6 +56,8 @@ class Recipe(models.Model):
     image_path = models.CharField(max_length=300)
     total_stars = models.PositiveBigIntegerField(default=0)
     num_scores = models.PositiveBigIntegerField(default=0)
+    user = models.BigIntegerField()
+    servings = models.BigIntegerField()
 
     def __str__(self):
         return self.name
