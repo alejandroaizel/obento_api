@@ -6,19 +6,25 @@ Description
 
 ### Dependencies 📋
 
-First, you have to activate obento_env executing:
+Firstly, you have to create obento_env:
+
+```bash
+python3 -m venv obento_env
+```
+
+Secondly, you have to activate obento_env executing:
 
 ```bash
 source obento_env/bin/activate
 ```
 
-You have to execute the following command to install the dependencies of the project:
+Finally, you have to execute the following command to install the dependencies of the project:
 
 ```bash
 python3 -m pip install -r requirements.txt
 ```
 
-You have to execute the following command to update the requirements.txt with new modules added:
+If you need to update the requirements.txt with new dependencies added, you have to execute the following command:
 
 ```bash
 python3 -m pip freeze -all > requirements.txt
@@ -28,25 +34,25 @@ python3 -m pip freeze -all > requirements.txt
 
 There are a Makefile that allow you:
 
-* Generate migration file
+* Generate migration file (contains inserts, modifications or deletes of entities on the database)
 
 ```bash
 make generate-migrations
 ```
 
-* Run migration
+* Run migration (create, update or delete entities on the database)
 
 ```bash
 make migrate
 ```
 
-* Revert migration
+* Revert migration (restore a previous migration)
 
 ```bash
 make migrate PREV_MIG=XXXX
 ```
 
-* Run server
+* Run server (launch obento_api)
 
 ```bash
 make run-server

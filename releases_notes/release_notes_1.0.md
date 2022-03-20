@@ -4,6 +4,7 @@
 <!--List of new features !-->
 - Added endpoints that allows retrieve, create and delete recipes.
 - Added endpoint that allow retrieve list of ingredients.
+- Added endpoints that allows retrieve, create and delete menus.
   
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
