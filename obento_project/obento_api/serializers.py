@@ -42,7 +42,6 @@ class RecipeSerializer(serializers.ModelSerializer):
                 pk=ingredient_data['ingredient_id'])
             Compound.objects.create(
                 recipe=recipe, ingredient=ingredient, quantity=ingredient_data['quantity'])
-
         return recipe.id
 
 
@@ -56,7 +55,6 @@ class IngredientSerializer(serializers.ModelSerializer):
                   'unitary_price',
                   'kcalories',
                   'icon_name')
-
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
@@ -86,7 +84,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
-
 
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:

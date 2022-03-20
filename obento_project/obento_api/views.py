@@ -109,7 +109,6 @@ def get_compound(recipe):
 
     return recipe_data
 
-
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
@@ -289,3 +288,4 @@ class ScheduleDetail(APIView):
             return Response({'message': f'Menu {menu_id} deleted.'}, status=status.HTTP_204_NO_CONTENT)
         except Schedule.DoesNotExist:
             return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
