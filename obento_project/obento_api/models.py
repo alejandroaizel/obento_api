@@ -75,9 +75,10 @@ class Compound(models.Model):
 
 class Schedule(models.Model):
     class Meta:
+        unique_together = (('user', 'recipe', 'date', 'is_lunch'),)
         db_table = 'schedule'
 
-    # user = models.ForeignKey()
+    user = models.BigIntegerField()
     recipe = models.ForeignKey(Recipe, on_delete=models.SET_NULL, null=True)
     date = models.DateTimeField()
     is_lunch = models.BooleanField(default=True)

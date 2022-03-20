@@ -21,5 +21,7 @@ urlpatterns = [
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', RegisterView.as_view(), name='auth_register'),
     path('logout/', LogoutView.as_view(), name='auth_logout'),
-    path('logout_all/', LogoutAllView.as_view(), name='auth_logout_all')
+    path('logout_all/', LogoutAllView.as_view(), name='auth_logout_all'),
+    path('menus', views.ScheduleList.as_view(), name='menu_list'),
+    path('menus/<int:menu_id>', views.ScheduleDetail.as_view(), name='menu_detail')
 ]

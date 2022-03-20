@@ -32,13 +32,16 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
-        recipe_category = RecipeCategory.objects.get(pk=validated_data['category'])
+        recipe_category = RecipeCategory.objects.get(
+            pk=validated_data['category'])
         validated_data['category'] = recipe_category
         recipe = Recipe.objects.create(**validated_data)
 
         for ingredient_data in ingredients_data:
-            ingredient = Ingredient.objects.get(pk=ingredient_data['ingredient_id'])
-            Compound.objects.create(recipe=recipe, ingredient=ingredient, quantity=ingredient_data['quantity'])
+            ingredient = Ingredient.objects.get(
+                pk=ingredient_data['ingredient_id'])
+            Compound.objects.create(
+                recipe=recipe, ingredient=ingredient, quantity=ingredient_data['quantity'])
 
         return recipe.id
 
@@ -54,14 +57,15 @@ class IngredientSerializer(serializers.ModelSerializer):
                   'kcalories',
                   'icon_name')
 
-                
+
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
-            required=True,
-            validators=[UniqueValidator(queryset=User.objects.all())]
-            )
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
 
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password])
 
     class Meta:
         model = User
@@ -87,11 +91,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
-        fields = ('date',
-                  'is_lunch')
-    
-    def create(self, validated_data):
-        recipe = Recipe.objects.get(pk=validated_data['recipe_id'])
-        schedule = Schedule.objects.create(recipe=recipe, date=validated_data['date'], is_lunch=validated_data['is_lunch'])
+        fields = ('id',
+                  'user',
+                  'date',
+                  'is_lunch',
+                  'recipe',)
 
-        return schedule
+    def create(self, validated_data, date, recipe, is_lunch):
+        schedule = Schedule.objects.create(user=validated_data['user'], recipe=recipe, date=date,
+                                        is_lunch=is_lunch)
+        return schedule.id
