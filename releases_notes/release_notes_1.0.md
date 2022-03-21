@@ -2,11 +2,12 @@
 
 ### New features added to 1.0:
 <!--List of new features !-->
-- Added endpoints that allows retrieve, create and delete recipes.
-- Added endpoint that allow retrieve list of ingredients.
-- Added endpoints that allows retrieve, create and delete menus.
-- Added endpoint that allow retrieve recipes of a user.
+- Added endpoints that allow retrieve, create and delete recipes.
+- Added endpoint that allows retrieve list of ingredients.
+- Added endpoints that allow retrieve, create and delete menus.
+- Added endpoint that allows retrieve recipes of a user.
 - Added "user" and "servings" fields to Recipe entity.
+- Added endpoints that allow score a recipe and retrieve scores.
 
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->

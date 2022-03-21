@@ -27,7 +27,7 @@ python3 -m pip install -r requirements.txt
 If you need to update the requirements.txt with new dependencies added, you have to execute the following command:
 
 ```bash
-python3 -m pip freeze -all > requirements.txt
+python3 -m pip freeze > requirements.txt
 ```
 
 ### Execution 🔧
@@ -61,4 +61,4 @@ make run-server
 ## Developed with 🛠️
 
 * [Django](https://www.djangoproject.com/) - Framework
-* [Python](https://www.djangoproject.com/) - Lenguage
+* [Python](https://www.python.org) - Lenguage

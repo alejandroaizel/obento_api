@@ -54,7 +54,7 @@ class Recipe(models.Model):
     cooking_time = models.IntegerField()
     is_lunch = models.BooleanField(default=True)
     image_path = models.CharField(max_length=300)
-    total_stars = models.PositiveBigIntegerField(default=0)
+    total_stars = models.FloatField(default=0.0)
     num_scores = models.PositiveBigIntegerField(default=0)
     user = models.BigIntegerField()
     servings = models.BigIntegerField()
