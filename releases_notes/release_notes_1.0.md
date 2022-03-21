@@ -8,11 +8,14 @@
 - Added endpoint that allows retrieve recipes of a user.
 - Added "user" and "servings" fields to Recipe entity.
 - Added endpoints that allow score a recipe and retrieve scores.
-  
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
 - Fixed error when adding ingredient that not exists.
 - Fixed bug that did not allow steps to be a vector.
+
+### Issues solved in 1.0:
+<!--List of bugs and errors solved !-->
+- Fix local and production environments in application settings
 
 ### List of known issues in 1.0:
 <!--List of bugs and errors not solved at the time of the release !-->
