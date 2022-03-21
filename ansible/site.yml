@@ -3,5 +3,5 @@
   remote_user: ubuntu
   become: yes
   roles:
-    #- role: mysql
     - role: obento_server
+    - role: mysql

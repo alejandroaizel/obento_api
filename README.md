@@ -62,3 +62,25 @@ make run-server
 
 * [Django](https://www.djangoproject.com/) - Framework
 * [Python](https://www.djangoproject.com/) - Lenguage
+
+
+## Deployment
+
+### First things first
+
+Install `ansible`
+
+#### Add obento Host
+
+Modify your `/etc/ansible/hosts/` with these lines:
+
+```
+[production]
+obento ansible_host=13.37.225.162 ansible_user=ubuntu
+```
+
+### Deploy in production
+
+```bash
+ansible-playbook ansible/site.yml
+```

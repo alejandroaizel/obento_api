@@ -22,6 +22,7 @@
   become: no
 
 - name: Install pip dependencies
-  ansible.builtin.shell: python3 -m pip install -r requirements.txt
+  pip:
+    requirements: /home/ubuntu/obento/obento_project/requirements.txt
   args:
     chdir: /home/ubuntu/obento/obento_project
