@@ -89,3 +89,14 @@ class Schedule(models.Model):
         return self.name
 
 
+class Score(models.Model):
+    class Meta:
+        unique_together = (('user', 'recipe'),)
+        db_table = 'score'
+
+    user = models.BigIntegerField()
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+    num_stars = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return self.name

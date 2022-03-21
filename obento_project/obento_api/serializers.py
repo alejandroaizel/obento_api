@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Recipe, Ingredient, Compound, RecipeCategory, Schedule
+from .models import *
 
 
 class CompoundSerializer(serializers.ModelSerializer):
@@ -44,8 +44,8 @@ class RecipeSerializer(serializers.ModelSerializer):
             for ingredient_data in ingredients_data:
                 ingredient = Ingredient.objects.get(
                     pk=ingredient_data['ingredient_id'])
-                Compound.objects.create(
-                    recipe=recipe, ingredient=ingredient, quantity=ingredient_data['quantity'])
+                Compound.objects.create(recipe=recipe, ingredient=ingredient,
+                                        quantity=ingredient_data['quantity'])
         except:
             recipe.delete()
             return 'Ingredient {} doesnt\'t exist.'.format(ingredient_data['ingredient_id'])
@@ -115,3 +115,23 @@ class RecipeCategorySerializer(serializers.ModelSerializer):
         model = RecipeCategory
         fields = ('id',
                   'description')
+
+
+class ScoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Score
+        fields = ('id',
+                  'user',
+                  'recipe',
+                  'num_stars')
+
+    def create(self, validated_data):
+        recipe = Recipe.objects.get(pk=validated_data['recipe'])
+        print(recipe)
+        recipe.total_stars += validated_data['num_stars']
+        recipe.num_scores += 1
+        recipe.save()
+        score = Score.objects.create(user=validated_data['user'], recipe=recipe,
+                                     num_stars=validated_data['num_stars'])
+
+        return score.id

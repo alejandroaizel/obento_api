@@ -18,6 +18,7 @@ urlpatterns = [
     path('recipes', views.recipes_list),
     path('recipes/<int:recipe_id>', views.get_delete_recipe),
     path('user/<int:user_id>/recipes', views.UserRecipeList.as_view(), name='user_recipes_list'),
+    path('user/<int:user_id>/recipe/<int:recipe_id>/scores', views.ScoreCreate.as_view(), name='score_create'),
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -25,5 +26,6 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='auth_logout'),
     path('logout_all/', LogoutAllView.as_view(), name='auth_logout_all'),
     path('menus', views.ScheduleList.as_view(), name='menu_list'),
-    path('menus/<int:menu_id>', views.ScheduleDetail.as_view(), name='menu_detail')
+    path('menus/<int:menu_id>', views.ScheduleDetail.as_view(), name='menu_detail'),
+    path('scores', views.ScoreList.as_view(), name='score_list')
 ]
