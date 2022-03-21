@@ -127,7 +127,6 @@ class ScoreSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         recipe = Recipe.objects.get(pk=validated_data['recipe'])
-        print(recipe)
         recipe.total_stars += validated_data['num_stars']
         recipe.num_scores += 1
         recipe.save()

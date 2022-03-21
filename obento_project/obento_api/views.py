@@ -19,7 +19,7 @@ from obento_api.models import *
 from obento_api.serializers import *
 import json
 
-from django.db.models import Q
+from django.db.models import Q, F
 
 import datetime
 
@@ -339,7 +339,7 @@ class ScheduleDetail(APIView):
 
 class ScoreList(APIView):
     """
-    List all scores
+    List all scores filter by user_id, recipe_id or num_stars
     """
 
     def get(self, request):
@@ -359,7 +359,12 @@ class ScoreList(APIView):
         if 'num_stars' in score_data:
             q &= Q(num_stars=score_data['num_stars'])
 
-        scores = Score.objects.filter(q)
+        if 'order_by' in score_data:
+            scores = Score.objects.filter(q).order_by(
+                '-'+score_data['order_by'])[:10]
+        else:
+            scores = Score.objects.filter(q)
+
         scores_data = []
 
         for score in scores:
@@ -372,11 +377,10 @@ class ScoreList(APIView):
 
 class ScoreCreate(APIView):
     """
-    Create a new score
+    Create and updare a score
     """
 
     def post(self, request, user_id, recipe_id):
-
         try:
             score_data = JSONParser().parse(request)
             score_data['recipe'] = recipe_id
@@ -387,7 +391,38 @@ class ScoreCreate(APIView):
         score_serializer = ScoreSerializer(data=score_data)
 
         if score_serializer.is_valid():
+            if score_data['num_stars'] < 0 or score_data['num_stars'] > 5:
+                return JsonResponse({'message': 'Score must be a positive number between 0 and 5.'}, status=status.HTTP_400_BAD_REQUEST)
             score_id = score_serializer.create(score_data)
-            return Response({'id': 'score_id'}, status=status.HTTP_201_CREATED)
+            return Response({'id': score_id}, status=status.HTTP_201_CREATED)
 
         return Response(score_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, user_id, recipe_id):
+        try:
+            score_data = JSONParser().parse(request)
+            score_data['recipe'] = recipe_id
+            score_data['user'] = user_id
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = {}
+
+        if not "num_stars" in score_data:
+            message['num_stars'] = ["This field is required."]
+        else:
+            if type(score_data['num_stars']) == str:
+                return JsonResponse({'message': 'Score must be a number.'}, status=status.HTTP_400_BAD_REQUEST)
+            if score_data['num_stars'] < 0 or score_data['num_stars'] > 5:
+                return JsonResponse({'message': 'Score must be a positive number between 0 and 5.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            score = Score.objects.filter(user=user_id, recipe=recipe_id)
+            recipe = Recipe.objects.filter(id=score_data['recipe']).update(total_stars=F('total_stars')
+                                                                        - score[0].num_stars
+                                                                        + score_data['num_stars'])
+            score.update(num_stars=score_data['num_stars'])
+        except:
+            return JsonResponse({'message': 'Invalid user_id or recipe_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': f'Score {score[0].id} updated.'}, status=status.HTTP_200_OK)
