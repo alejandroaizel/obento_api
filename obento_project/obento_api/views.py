@@ -541,3 +541,6 @@ class ShoppingList(APIView):
                 result["ingredients"].append(data_ingredient)
                 result["total_price"] = result["total_price"] + data_ingredient['price']
         return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
+
+    def put(self, request, user_id, format=None):
+        return JsonResponse([], status=status.HTTP_200_OK, safe=False)
