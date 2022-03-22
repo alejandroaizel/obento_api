@@ -74,7 +74,7 @@ class Compound(models.Model):
     quantity = models.FloatField()
 
     def __str__(self):
-        return self.name
+        return "Ingredient: " + self.ingredient.name + " Recipe: " + self.recipe.name
 
 
 class Schedule(models.Model):

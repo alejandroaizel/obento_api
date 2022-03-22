@@ -29,4 +29,5 @@ urlpatterns = [
     path('menus', views.ScheduleList.as_view(), name='menu_list'),
     path('menus/<int:menu_id>', views.ScheduleDetail.as_view(), name='menu_detail'),
     path('scores', views.ScoreList.as_view(), name='score_list')
+    path('user/<int:user_id>/shopping_list', views.ShoppingList.as_view(), name = 'shopping_list')
 ]

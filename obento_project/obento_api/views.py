@@ -321,7 +321,7 @@ class ScheduleDetail(APIView):
     """
     Retrieve or delete a schedule by ID
     """
-    
+
     def get(self, request, menu_id):
         schedule = None
 
@@ -422,7 +422,7 @@ class UserScheduleList(APIView):
                 return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
 
         return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
-        
+
 class ScoreList(APIView):
     """
     List all scores filter by user_id, recipe_id or num_stars
@@ -520,3 +520,21 @@ def base64_to_image(image_base64):
     image = ContentFile(base64.b64decode(imgstr))
 
     return image, ext
+class ShoppingList(APIView):
+    """
+    Retrieves and updates the shopping list according to the recipes or menus
+    """
+
+    def get(self, request, user_id, format=None):
+        result = {"ingredients": [], "total_price": 0.0}
+        # user_recipes = Recipe.objects.filter(user=user_id)
+        # print(user_recipes)
+        # ingredients = Ingredient.objects.select_related('compound', 'recipe').filter(recipe__in=user_recipes)
+        # print(ingredients)
+        for p in Ingredient.objects.raw('''select i.id, i.name, i.unitary_price, c.quantity
+                                           FROM  ingredient i
+                                           inner join compound c on i.id  = c.ingredient_id
+                                           inner join recipe r on c.recipe_id = r.id
+                                           where r.`user` = 1'''):
+            print(p)
+        return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
