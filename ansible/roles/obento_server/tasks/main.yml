@@ -21,8 +21,27 @@
     version: dev
   become: no
 
+# TODO to test
+- name: Create obento_env
+  ansible.builtin.shell:
+    chdir: /home/ubuntu/obento
+    cmd: "python3 -m venv obento_env"
+
+# TODO to test
+- name: Activate obento_env
+  ansible.builtin.shell:
+    chdir: /home/ubuntu/obento
+    cmd: source obento_env/bin/activate
+
 - name: Install pip dependencies
   pip:
     requirements: /home/ubuntu/obento/obento_project/requirements.txt
   args:
     chdir: /home/ubuntu/obento/obento_project
+
+# TODO to test
+- name: Run migrations
+  make:
+    chdir: /home/ubuntu/obento/obento_project
+    target: migrate
+    file: /home/ubuntu/obento/obento_project/Makefile
