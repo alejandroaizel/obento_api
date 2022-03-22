@@ -527,14 +527,17 @@ class ShoppingList(APIView):
 
     def get(self, request, user_id, format=None):
         result = {"ingredients": [], "total_price": 0.0}
-        # user_recipes = Recipe.objects.filter(user=user_id)
-        # print(user_recipes)
-        # ingredients = Ingredient.objects.select_related('compound', 'recipe').filter(recipe__in=user_recipes)
-        # print(ingredients)
-        for p in Ingredient.objects.raw('''select i.id, i.name, i.unitary_price, c.quantity
-                                           FROM  ingredient i
-                                           inner join compound c on i.id  = c.ingredient_id
-                                           inner join recipe r on c.recipe_id = r.id
-                                           where r.`user` = 1'''):
-            print(p)
+        user_recipes = Recipe.objects.filter(user=user_id)
+        for recipe in user_recipes:
+            data_recipe = get_compound(recipe)
+            ingredients_recipe = data_recipe['ingredients']
+
+            for di in ingredients_recipe:
+                data_ingredient = {
+                                "name":   di['name'],
+                                "quantity": di['quantity'],
+                                "price": di['unitary_price'] * di['quantity']
+                              }
+                result["ingredients"].append(data_ingredient)
+                result["total_price"] = result["total_price"] + data_ingredient['price']
         return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
