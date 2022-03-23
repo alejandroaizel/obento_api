@@ -16,6 +16,6 @@
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
 - Fix local and production environments in application settings
-
+- Fix production run-server Makefile entry
 ### List of known issues in 1.0:
 <!--List of bugs and errors not solved at the time of the release !-->
