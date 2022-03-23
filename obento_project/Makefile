@@ -9,6 +9,6 @@ revert-migration:
 run-server:
 	python3 manage.py runserver --settings=obento_project.settings.local
 run-server-pro:
-	python3 manage.py runserver --settings=obento_project.settings.production
+	python3 manage.py runserver 0.0.0.0:8000 --settings=obento_project.settings.production
 shell:
 	python3 manage.py shell
