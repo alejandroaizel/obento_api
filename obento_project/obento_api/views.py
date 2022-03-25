@@ -173,6 +173,26 @@ def get_compound(recipe):
 
     return recipe_data
 
+def get_user_ingredients(user):
+    total_price = 0.0
+    ingredients = []
+
+    for ingredient in Add.objects.raw('''SELECT A.id, A.ingredient_id, A.quantity,
+                                         INGREDIENT.name, INGREDIENT.unitary_price
+                                         FROM `add` AS A
+                                         INNER JOIN ingredient AS INGREDIENT
+                                         ON A.ingredient_id = INGREDIENT.id
+                                         WHERE A.`user` = %s
+                                      ''', [user]):
+        ingredient_dict = vars(ingredient)
+        ingredient_dict.pop('_state')
+        ingredient_dict.pop('id')
+        ingredient_dict['price'] = ingredient_dict['quantity'] * ingredient_dict['unitary_price']
+        total_price += ingredient_dict['price']
+        ingredients.append(ingredient_dict)
+
+    return {'ingredients': ingredients, 'total_price': total_price}
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -526,20 +546,7 @@ class ShoppingList(APIView):
     """
 
     def get(self, request, user_id, format=None):
-        result = {"ingredients": [], "total_price": 0.0}
-        user_recipes = Recipe.objects.filter(user=user_id)
-        for recipe in user_recipes:
-            data_recipe = get_compound(recipe)
-            ingredients_recipe = data_recipe['ingredients']
-
-            for di in ingredients_recipe:
-                data_ingredient = {
-                                "name":   di['name'],
-                                "quantity": di['quantity'],
-                                "price": di['unitary_price'] * di['quantity']
-                              }
-                result["ingredients"].append(data_ingredient)
-                result["total_price"] = result["total_price"] + data_ingredient['price']
+        result = get_user_ingredients(user_id)
         return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
 
     def put(self, request, user_id, format=None):

@@ -19,6 +19,14 @@ class CompoundSerializer(serializers.ModelSerializer):
                   'name')
 
 
+class AddSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Add
+        fields = ('id',
+                  'user',
+                  'quantity',
+                  'ingredient_id')
+
 class RecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
