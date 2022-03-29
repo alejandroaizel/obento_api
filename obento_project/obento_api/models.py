@@ -54,7 +54,7 @@ class Recipe(models.Model):
     cooking_time = models.IntegerField()
     is_lunch = models.BooleanField(default=True)
     image_path = models.CharField(max_length=300)
-    total_stars = models.PositiveBigIntegerField(default=0)
+    total_stars = models.FloatField(default=0.0)
     num_scores = models.PositiveBigIntegerField(default=0)
     user = models.BigIntegerField()
     servings = models.BigIntegerField()
@@ -89,3 +89,14 @@ class Schedule(models.Model):
         return self.name
 
 
+class Score(models.Model):
+    class Meta:
+        unique_together = (('user', 'recipe'),)
+        db_table = 'score'
+
+    user = models.BigIntegerField()
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+    num_stars = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return self.name

@@ -19,7 +19,7 @@ from obento_api.models import *
 from obento_api.serializers import *
 import json
 
-from django.db.models import Q
+from django.db.models import Q, F
 
 import datetime
 
@@ -105,7 +105,8 @@ class RecipeCategoryList(APIView):
 
     def get(self, request, format=None):
         recipe_categories = RecipeCategory.objects.all()
-        recipe_categories_serializer = RecipeCategorySerializer(recipe_categories, many=True)
+        recipe_categories_serializer = RecipeCategorySerializer(
+            recipe_categories, many=True)
         return JsonResponse(recipe_categories_serializer.data, status=status.HTTP_200_OK, safe=False)
 
 
@@ -144,6 +145,10 @@ def get_compound(recipe):
     recipe_data['kcalories'] = kcalories
     recipe_data['estimated_cost'] = estimated_cost
     recipe_data['ingredients'] = compounds
+
+    recipe_data['num_stars'] = 0.0
+    if recipe.num_scores != 0:
+        recipe_data['num_stars'] = recipe.total_stars / recipe.num_scores
 
     return recipe_data
 
@@ -192,7 +197,7 @@ class ScheduleList(APIView):
 
     RECIPES_PER_DAY = 2
 
-    def get(self, request, format=None):
+    def get(self, request):
 
         try:
             schedule_data = JSONParser().parse(request)
@@ -231,7 +236,7 @@ class ScheduleList(APIView):
 
         return JsonResponse(schedules_data, status=status.HTTP_200_OK, safe=False)
 
-    def post(self, request, format=None):
+    def post(self, request):
 
         try:
             schedule_data = JSONParser().parse(request)
@@ -248,9 +253,7 @@ class ScheduleList(APIView):
             delta = datetime.date(end_date.year, end_date.month, end_date.day) - \
                 datetime.date(start_date.year,
                               start_date.month, start_date.day)
-            print(delta.days)
             num_recipes = (delta.days + 1) * self.RECIPES_PER_DAY
-            print(num_recipes)
             recipes = Recipe.objects.all().order_by('?')[:num_recipes]
 
             result = []
@@ -258,8 +261,8 @@ class ScheduleList(APIView):
             i = 1
             is_lunch = True
             for recipe in recipes:
-                menu_id = schedule_serializer.create(
-                    schedule_data, start_date, recipe, is_lunch)
+                menu_id = schedule_serializer.create(schedule_data, start_date,
+                                                     recipe, is_lunch)
                 result.append(menu_id)
 
                 is_lunch = False
@@ -332,3 +335,94 @@ class ScheduleDetail(APIView):
             return Response({'message': f'Menu {menu_id} deleted.'}, status=status.HTTP_204_NO_CONTENT)
         except Schedule.DoesNotExist:
             return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ScoreList(APIView):
+    """
+    List all scores filter by user_id, recipe_id or num_stars
+    """
+
+    def get(self, request):
+
+        try:
+            score_data = JSONParser().parse(request)
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        q = Q()
+        if 'user_id' in score_data:
+            q &= Q(user=score_data['user_id'])
+
+        if 'recipe_id' in score_data:
+            q &= Q(recipe=score_data['recipe_id'])
+
+        if 'num_stars' in score_data:
+            q &= Q(num_stars=score_data['num_stars'])
+
+        if 'order_by' in score_data:
+            scores = Score.objects.filter(q).order_by(
+                '-'+score_data['order_by'])[:10]
+        else:
+            scores = Score.objects.filter(q)
+
+        scores_data = []
+
+        for score in scores:
+            score_serializer = ScoreSerializer(score)
+            score_data = score_serializer.data
+            scores_data.append(score_data)
+
+        return JsonResponse(scores_data, status=status.HTTP_200_OK, safe=False)
+
+
+class ScoreCreate(APIView):
+    """
+    Create and updare a score
+    """
+
+    def post(self, request, user_id, recipe_id):
+        try:
+            score_data = JSONParser().parse(request)
+            score_data['recipe'] = recipe_id
+            score_data['user'] = user_id
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        score_serializer = ScoreSerializer(data=score_data)
+
+        if score_serializer.is_valid():
+            if score_data['num_stars'] < 0 or score_data['num_stars'] > 5:
+                return JsonResponse({'message': 'Score must be a positive number between 0 and 5.'}, status=status.HTTP_400_BAD_REQUEST)
+            score_id = score_serializer.create(score_data)
+            return Response({'id': score_id}, status=status.HTTP_201_CREATED)
+
+        return Response(score_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, user_id, recipe_id):
+        try:
+            score_data = JSONParser().parse(request)
+            score_data['recipe'] = recipe_id
+            score_data['user'] = user_id
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = {}
+
+        if not "num_stars" in score_data:
+            message['num_stars'] = ["This field is required."]
+        else:
+            if type(score_data['num_stars']) == str:
+                return JsonResponse({'message': 'Score must be a number.'}, status=status.HTTP_400_BAD_REQUEST)
+            if score_data['num_stars'] < 0 or score_data['num_stars'] > 5:
+                return JsonResponse({'message': 'Score must be a positive number between 0 and 5.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            score = Score.objects.filter(user=user_id, recipe=recipe_id)
+            recipe = Recipe.objects.filter(id=score_data['recipe']).update(total_stars=F('total_stars')
+                                                                        - score[0].num_stars
+                                                                        + score_data['num_stars'])
+            score.update(num_stars=score_data['num_stars'])
+        except:
+            return JsonResponse({'message': 'Invalid user_id or recipe_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': f'Score {score[0].id} updated.'}, status=status.HTTP_200_OK)
