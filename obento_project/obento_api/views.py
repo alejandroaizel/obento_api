@@ -14,6 +14,10 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, generics, status
 from obento_api.models import *
 from obento_api.serializers import *
+
+import boto3
+import json
+
 from django.db.models import Q, F
 import datetime
 import base64
@@ -93,6 +97,37 @@ def get_delete_recipe(request, recipe_id):
             return JsonResponse({'message': f'Recipe {recipe_id} deleted.'}, status=status.HTTP_200_OK)
         except Recipe.DoesNotExist:
             return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_404_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def generate_recipe(request):
+    try:
+        recipe_image = JSONParser().parse(request)
+    except:
+        return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'image' in recipe_image:
+        client = boto3.client('textract')
+
+        image_b64_decode = base64.b64decode(recipe_image['image'])
+        bytes = bytearray(image_b64_decode)
+
+        response = client.analyze_document(
+            Document={
+                'Bytes': bytes
+            },
+            FeatureTypes=[
+                'TABLES',
+                'FORMS'
+            ]
+        )
+
+        return JsonResponse(response, status=status.HTTP_200_OK, safe=False)
+    else:
+        message = {}
+        message['image'] = ['This field is mandatory.']
+
+    return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserRecipeList(APIView):
@@ -300,6 +335,7 @@ class ScheduleList(APIView):
             delta = datetime.date(end_date.year, end_date.month, end_date.day) - \
                 datetime.date(start_date.year,
                                 start_date.month, start_date.day)
+
 
             q = Q()
             if 'is_lunch' in schedule_data:

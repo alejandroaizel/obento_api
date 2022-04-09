@@ -17,6 +17,7 @@ urlpatterns = [
     path('recipe_categories', views.RecipeCategoryList.as_view(), name='recipe_category_list'),
     path('recipes', views.recipes_list),
     path('recipes/<int:recipe_id>', views.get_delete_recipe),
+    path('recipe_ocr', views.generate_recipe),
     path('user/<int:user_id>/recipes', views.UserRecipeList.as_view(), name='user_recipes_list'),
     path('user/<int:user_id>/recipe/<int:recipe_id>/scores', views.ScoreCreate.as_view(), name='score_create'),
     path('user/<int:user_id>/menus', views.UserScheduleList.as_view(), name='user_menu_detail'),
