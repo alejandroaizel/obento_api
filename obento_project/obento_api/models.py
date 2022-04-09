@@ -58,6 +58,7 @@ class Recipe(models.Model):
     num_scores = models.PositiveBigIntegerField(default=0)
     user = models.BigIntegerField()
     servings = models.BigIntegerField()
+    ingredients = models.ManyToManyField(Ingredient, through='Compound')
 
     def __str__(self):
         return self.name
@@ -77,7 +78,7 @@ class Compound(models.Model):
 
 class Schedule(models.Model):
     class Meta:
-        unique_together = (('user', 'recipe', 'date', 'is_lunch'),)
+        # unique_together = (('user', 'date', 'is_lunch'),)
         db_table = 'schedule'
 
     user = models.BigIntegerField()
