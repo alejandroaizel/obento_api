@@ -22,7 +22,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'schedule',
-                'unique_together': {('user', 'recipe', 'date', 'is_lunch')},
             },
         ),
     ]
