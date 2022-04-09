@@ -104,10 +104,10 @@ class ScheduleSerializer(serializers.ModelSerializer):
                   'is_lunch',
                   'recipe',)
 
-    def create(self, validated_data, date, recipe, is_lunch):
-        schedule = Schedule.objects.create(user=validated_data['user'], recipe=recipe, date=date,
-                                           is_lunch=is_lunch)
-        return schedule.id
+    def save(self, validated_data, date, recipe, is_lunch):
+        object, created = Schedule.objects.update_or_create(user=validated_data['user'], date=date,
+                                           is_lunch=is_lunch, defaults={'recipe_id': recipe.id})
+        return object.id
 
 
 class RecipeCategorySerializer(serializers.ModelSerializer):

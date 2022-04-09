@@ -81,6 +81,9 @@ DATABASES = {
             'OPTIONS': {
                 'read_default_file': '/etc/mysql/my.cnf',
             },
+        # 'USER': 'obento-admin',
+        # 'PASSWORD': 'Admin1234?',
+        # 'NAME': 'obento_database'
     }
 }
 

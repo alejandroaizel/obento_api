@@ -1,6 +1,7 @@
 # views.py
 
 from ast import Return
+from unicodedata import category
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 
@@ -27,7 +28,16 @@ import datetime
 @api_view(['GET', 'POST'])
 def recipes_list(request):
     if request.method == 'GET':
-        recipes = Recipe.objects.all()
+        try:
+            recipe_data = JSONParser().parse(request)
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        q = Q()
+        if 'category' in recipe_data:
+            q &= Q(category=recipe_data['category'])
+
+        recipes = Recipe.objects.filter(q)
         result = []
 
         for recipe in recipes:
@@ -36,7 +46,10 @@ def recipes_list(request):
 
         return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
     elif request.method == 'POST':
-        recipe_data = JSONParser().parse(request)
+        try:
+            recipe_data = JSONParser().parse(request)
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if 'steps' in recipe_data:
             steps = recipe_data['steps']
@@ -72,14 +85,14 @@ def get_delete_recipe(request, recipe_id):
             recipe_data = get_compound(recipe)
             return JsonResponse(recipe_data)
         except Recipe.DoesNotExist:
-            return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_404_BAD_REQUEST)
     elif request.method == 'DELETE':
         try:
             recipe = Recipe.objects.get(pk=recipe_id)
             recipe.delete()
             return JsonResponse({'message': f'Recipe {recipe_id} deleted.'}, status=status.HTTP_200_OK)
         except Recipe.DoesNotExist:
-            return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_404_BAD_REQUEST)
 
 
 class UserRecipeList(APIView):
@@ -243,6 +256,12 @@ class ScheduleList(APIView):
         except:
             return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        message = {}
+
+        if 'date' not in schedule_data:
+            message['date'] = ["This field is required."]
+            return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+
         dates_str = schedule_data['date'].split("|")
         start_date = datetime.datetime.strptime(dates_str[0], '%d-%m-%y')
         end_date = datetime.datetime.strptime(dates_str[1], '%d-%m-%y')
@@ -253,15 +272,26 @@ class ScheduleList(APIView):
             delta = datetime.date(end_date.year, end_date.month, end_date.day) - \
                 datetime.date(start_date.year,
                               start_date.month, start_date.day)
+            
+            q = Q()
+            if 'is_lunch' in schedule_data:
+                q &= Q(is_lunch=schedule_data['is_lunch'])
+
+            # if "ingredients_blacklist" in schedule_data:
+                # TODO: Retrieve user blacklist and discard the ingredients
+
+            if 'discarded_ingredients' in schedule_data:
+                q &= ~Q(ingredients__in=schedule_data['discarded_ingredients'])
+
             num_recipes = (delta.days + 1) * self.RECIPES_PER_DAY
-            recipes = Recipe.objects.all().order_by('?')[:num_recipes]
+            recipes = Recipe.objects.filter(q).order_by('?').distinct()[:num_recipes]
 
             result = []
 
             i = 1
             is_lunch = True
             for recipe in recipes:
-                menu_id = schedule_serializer.create(schedule_data, start_date,
+                menu_id = schedule_serializer.save(schedule_data, start_date,
                                                      recipe, is_lunch)
                 result.append(menu_id)
 
@@ -280,9 +310,9 @@ class ScheduleList(APIView):
 
 class ScheduleDetail(APIView):
     """
-    Retrieve, update or delete a schedule
+    Retrieve or delete a schedule by ID
     """
-
+    
     def get(self, request, menu_id):
         schedule = None
 
@@ -293,42 +323,9 @@ class ScheduleDetail(APIView):
             schedule_data['recipe'] = get_compound(schedule.recipe)
             return JsonResponse(schedule_data, status=status.HTTP_200_OK, safe=False)
         except Schedule.DoesNotExist:
-            try:
-                schedule_data = JSONParser().parse(request)
-            except:
-                return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
 
-            message = {}
-
-            if 'user' not in schedule_data:
-                message['user'] = ["This field is required."]
-
-            if 'date' not in schedule_data:
-                message['date'] = ["This field is required."]
-
-            if 'is_lunch' not in schedule_data:
-                message['is_lunch'] = ["This field is required."]
-
-            if not message:
-                try:
-                    date = datetime.datetime.strptime(
-                        schedule_data['date'], '%d-%m-%y')
-                    schedule = Schedule.objects.filter(
-                        user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
-                except Schedule.DoesNotExist:
-                    return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-                if len(schedule) == 1:
-                    schedule_serializer = ScheduleSerializer(schedule[0])
-                    schedule_data = schedule_serializer.data
-                    schedule_data['recipe'] = get_compound(schedule[0].recipe)
-                    return JsonResponse(schedule_data, status=status.HTTP_200_OK, safe=False)
-                elif len(schedule) == 0:
-                    return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-            return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, menu_id):
+    def delete(self, request, menu_id):
         try:
             schedule = Schedule.objects.get(pk=menu_id)
             schedule.delete()
@@ -336,7 +333,46 @@ class ScheduleDetail(APIView):
         except Schedule.DoesNotExist:
             return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
 
+class UserScheduleList(APIView):
+    """
+    Retrieve user recipes
+    """
 
+    def get(self, request, user_id):
+
+        try:
+            schedule_data = JSONParser().parse(request)
+            schedule_data['user'] = user_id
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = {}
+
+        if 'date' not in schedule_data:
+            message['date'] = ["This field is required."]
+
+        if 'is_lunch' not in schedule_data:
+            message['is_lunch'] = ["This field is required."]
+
+        if not message:
+            try:
+                date = datetime.datetime.strptime(
+                    schedule_data['date'], '%d-%m-%y')
+                schedule = Schedule.objects.filter(
+                    user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
+            except Schedule.DoesNotExist:
+                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if len(schedule) == 1:
+                schedule_serializer = ScheduleSerializer(schedule[0])
+                schedule_data = schedule_serializer.data
+                schedule_data['recipe'] = get_compound(schedule[0].recipe)
+                return JsonResponse(schedule_data, status=status.HTTP_200_OK, safe=False)
+            elif len(schedule) == 0:
+                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+        
 class ScoreList(APIView):
     """
     List all scores filter by user_id, recipe_id or num_stars
@@ -412,7 +448,7 @@ class ScoreCreate(APIView):
             message['num_stars'] = ["This field is required."]
         else:
             if type(score_data['num_stars']) == str:
-                return JsonResponse({'message': 'Score must be a number.'}, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse({'message': 'A valid number is required.'}, status=status.HTTP_400_BAD_REQUEST)
             if score_data['num_stars'] < 0 or score_data['num_stars'] > 5:
                 return JsonResponse({'message': 'Score must be a positive number between 0 and 5.'}, status=status.HTTP_400_BAD_REQUEST)
 
