@@ -9,14 +9,13 @@
 - Added "user" and "servings" fields to Recipe entity.
 - Added endpoints that allow score a recipe and retrieve scores.
 - Added filters "is_lunch" and "discarded_ingredients" to allow make custom menus.
-- Added filter "category" to allow retrive recipes by category.
+- Added filter "category" to allow retrieve recipes by category.
 
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
 - Fixed error when adding ingredient that not exists.
 - Fixed bug that did not allow "steps" to be a vector.
 - Fixed local and production environments in application settings.
-- Fixed error that allowed.
 - Fixed error that allowed create two menus to the same day.
 
 ### List of known issues in 1.0:
