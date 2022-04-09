@@ -78,12 +78,12 @@ DATABASES = {
     # }
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-            # 'OPTIONS': {
-            #     'read_default_file': '/etc/mysql/my.cnf',
-            # },
-        'USER': 'obento-admin',
-        'PASSWORD': 'Admin1234?',
-        'NAME': 'obento_database'
+            'OPTIONS': {
+                'read_default_file': '/etc/mysql/my.cnf',
+            },
+        # 'USER': 'obento-admin',
+        # 'PASSWORD': 'Admin1234?',
+        # 'NAME': 'obento_database'
     }
 }
 
