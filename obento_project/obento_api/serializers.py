@@ -1,5 +1,6 @@
 # serializers.py
 
+from re import I
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
@@ -32,7 +33,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                   'servings',
                   'user')
 
-    def create(self, validated_data):
+    def create(self, validated_data, image, ext):
         ingredients_data = validated_data.pop('ingredients')
         recipe_category = RecipeCategory.objects.get(
             pk=validated_data['category'])
@@ -50,6 +51,9 @@ class RecipeSerializer(serializers.ModelSerializer):
             recipe.delete()
             return 'Ingredient {} doesnt\'t exist.'.format(ingredient_data['ingredient_id'])
 
+        user_id = validated_data['user']
+        filename = f'{user_id}_{recipe.id}.{ext}'
+        recipe.image_path.save(filename, image, save=True)
         return recipe.id
 
 
