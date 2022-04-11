@@ -1,5 +1,6 @@
-from unicodedata import decimal
+import os
 from django.db import models
+from datetime import date
 
 # Create your models here.
 
@@ -53,7 +54,7 @@ class Recipe(models.Model):
     steps = models.CharField(max_length=5000)
     cooking_time = models.IntegerField()
     is_lunch = models.BooleanField(default=True)
-    image_path = models.CharField(max_length=300)
+    image_path = models.ImageField(upload_to = date.today().strftime("%%Y/%m/%d"), blank=True)
     total_stars = models.FloatField(default=0.0)
     num_scores = models.PositiveBigIntegerField(default=0)
     user = models.BigIntegerField()

@@ -1,32 +1,32 @@
 # views.py
 
-from ast import Return
 from unicodedata import category
 from django.http import JsonResponse
 from django.contrib.auth.models import User
-
 from rest_framework import viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
-
 from rest_framework.decorators import api_view
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework import viewsets, generics, status
-
 from obento_api.models import *
 from obento_api.serializers import *
-import json
-
 from django.db.models import Q, F
-
 import datetime
-
+import base64
+from django.core.files.base import ContentFile
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 @api_view(['GET', 'POST'])
 def recipes_list(request):
+    """
+    List all recipes or create a new recipe
+    """
+
     if request.method == 'GET':
         try:
             recipe_data = JSONParser().parse(request)
@@ -55,6 +55,8 @@ def recipes_list(request):
             steps = recipe_data['steps']
             recipe_data['steps'] = '||'.join(steps)
 
+        image, ext = base64_to_image(recipe_data['image_path'])
+        recipe_data.pop('image_path')
         recipe_serializer = RecipeSerializer(data=recipe_data)
 
         message = {}
@@ -66,7 +68,7 @@ def recipes_list(request):
             message['ingredients'] = ["This field is required."]
 
         if recipe_serializer.is_valid() and not message:
-            recipe_id = recipe_serializer.create(validated_data=recipe_data)
+            recipe_id = recipe_serializer.create(recipe_data, image, ext)
 
             if not recipe_id:
                 return JsonResponse({'message': recipe_id}, status=status.HTTP_400_BAD_REQUEST)
@@ -125,6 +127,10 @@ class RecipeCategoryList(APIView):
 
 @api_view(['GET'])
 def ingredients_list(request):
+    """
+    Retrieve ingredients
+    """
+
     if request.method == 'GET':
         ingredients = Ingredient.objects.all()
         ingredients_serializer = IngredientSerializer(ingredients, many=True)
@@ -132,6 +138,10 @@ def ingredients_list(request):
 
 
 def get_compound(recipe):
+    """
+    Retrieve ingredients of a recipe
+    """
+
     recipe_serializer = RecipeSerializer(recipe)
     recipe_data = recipe_serializer.data
     kcalories = 0.0
@@ -205,7 +215,7 @@ class RegisterView(generics.CreateAPIView):
 
 class ScheduleList(APIView):
     """
-    List all schedules, or create a new schedule
+    List all schedules or create a new schedule
     """
 
     RECIPES_PER_DAY = 2
@@ -271,8 +281,8 @@ class ScheduleList(APIView):
         if schedule_serializer.is_valid():
             delta = datetime.date(end_date.year, end_date.month, end_date.day) - \
                 datetime.date(start_date.year,
-                              start_date.month, start_date.day)
-            
+                                start_date.month, start_date.day)
+
             q = Q()
             if 'is_lunch' in schedule_data:
                 q &= Q(is_lunch=schedule_data['is_lunch'])
@@ -292,7 +302,8 @@ class ScheduleList(APIView):
             is_lunch = True
             for recipe in recipes:
                 menu_id = schedule_serializer.save(schedule_data, start_date,
-                                                     recipe, is_lunch)
+                                                    recipe, is_lunch)
+
                 result.append(menu_id)
 
                 is_lunch = False
@@ -332,6 +343,47 @@ class ScheduleDetail(APIView):
             return Response({'message': f'Menu {menu_id} deleted.'}, status=status.HTTP_204_NO_CONTENT)
         except Schedule.DoesNotExist:
             return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UserScheduleList(APIView):
+    """
+    Retrieve user recipes
+    """
+
+    def get(self, request, user_id):
+
+        try:
+            schedule_data = JSONParser().parse(request)
+            schedule_data['user'] = user_id
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = {}
+
+        if 'date' not in schedule_data:
+            message['date'] = ["This field is required."]
+
+        if 'is_lunch' not in schedule_data:
+            message['is_lunch'] = ["This field is required."]
+
+        if not message:
+            try:
+                date = datetime.datetime.strptime(
+                    schedule_data['date'], '%d-%m-%y')
+                schedule = Schedule.objects.filter(
+                    user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
+            except Schedule.DoesNotExist:
+                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if len(schedule) == 1:
+                schedule_serializer = ScheduleSerializer(schedule[0])
+                schedule_data = schedule_serializer.data
+                schedule_data['recipe'] = get_compound(schedule[0].recipe)
+                return JsonResponse(schedule_data, status=status.HTTP_200_OK, safe=False)
+            elif len(schedule) == 0:
+                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
 
 class UserScheduleList(APIView):
     """
@@ -413,7 +465,7 @@ class ScoreList(APIView):
 
 class ScoreCreate(APIView):
     """
-    Create and updare a score
+    Create and update a score
     """
 
     def post(self, request, user_id, recipe_id):
@@ -462,3 +514,11 @@ class ScoreCreate(APIView):
             return JsonResponse({'message': 'Invalid user_id or recipe_id.'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': f'Score {score[0].id} updated.'}, status=status.HTTP_200_OK)
+
+
+def base64_to_image(image_base64):
+    format, imgstr = image_base64.split(';base64,')
+    ext = format.split('/')[-1]
+    image = ContentFile(base64.b64decode(imgstr))
+
+    return image, ext

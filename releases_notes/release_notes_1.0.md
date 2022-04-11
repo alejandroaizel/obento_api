@@ -10,6 +10,8 @@
 - Added endpoints that allow score a recipe and retrieve scores.
 - Added filters "is_lunch" and "discarded_ingredients" to allow make custom menus.
 - Added filter "category" to allow retrieve recipes by category.
+- Added field to upload recipe image.
+
 
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
