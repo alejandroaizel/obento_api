@@ -1,6 +1,5 @@
 # views.py
 
-import io
 from unicodedata import category
 from django.http import JsonResponse
 from django.contrib.auth.models import User
@@ -304,6 +303,7 @@ class ScheduleList(APIView):
             for recipe in recipes:
                 menu_id = schedule_serializer.save(schedule_data, start_date,
                                                     recipe, is_lunch)
+
                 result.append(menu_id)
 
                 is_lunch = False
@@ -323,7 +323,7 @@ class ScheduleDetail(APIView):
     """
     Retrieve or delete a schedule by ID
     """
-
+    
     def get(self, request, menu_id):
         schedule = None
 
@@ -385,7 +385,46 @@ class UserScheduleList(APIView):
 
         return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
 
+class UserScheduleList(APIView):
+    """
+    Retrieve user recipes
+    """
 
+    def get(self, request, user_id):
+
+        try:
+            schedule_data = JSONParser().parse(request)
+            schedule_data['user'] = user_id
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        message = {}
+
+        if 'date' not in schedule_data:
+            message['date'] = ["This field is required."]
+
+        if 'is_lunch' not in schedule_data:
+            message['is_lunch'] = ["This field is required."]
+
+        if not message:
+            try:
+                date = datetime.datetime.strptime(
+                    schedule_data['date'], '%d-%m-%y')
+                schedule = Schedule.objects.filter(
+                    user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
+            except Schedule.DoesNotExist:
+                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if len(schedule) == 1:
+                schedule_serializer = ScheduleSerializer(schedule[0])
+                schedule_data = schedule_serializer.data
+                schedule_data['recipe'] = get_compound(schedule[0].recipe)
+                return JsonResponse(schedule_data, status=status.HTTP_200_OK, safe=False)
+            elif len(schedule) == 0:
+                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+        
 class ScoreList(APIView):
     """
     List all scores filter by user_id, recipe_id or num_stars

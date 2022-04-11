@@ -12,6 +12,7 @@
 - Added filter "category" to allow retrieve recipes by category.
 - Added field to upload recipe image.
 
+
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
 - Fixed error when adding ingredient that not exists.
