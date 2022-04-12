@@ -113,22 +113,59 @@ def generate_recipe(request):
         bytes = bytearray(image_b64_decode)
 
         response = client.analyze_document(
-            Document={
+            Document = {
                 'Bytes': bytes
             },
-            FeatureTypes=[
+            FeatureTypes = [
                 'TABLES',
                 'FORMS'
             ]
         )
 
-        return JsonResponse(response, status=status.HTTP_200_OK, safe=False)
+        # TODO delete when this feature is merged into dev
+        # with open('/home/miguel/github/obento_api/receipt-report-gambas-py.json', 'r') as f:
+        #     response = json.load(f)
+
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            blocks = response['Blocks']
+            lines = [line for line in blocks if line['BlockType'] == "LINE"]
+            text = [line['Text'] for line in lines]
+            recipe_json = __generate_recipe(text)
+            return JsonResponse(recipe_json, status=status.HTTP_200_OK, safe=False)
+        else:
+            message = {}
+            message['error'] = ['There was an error processing the image']
+            return JsonResponse(message, status=status.HTTP_424_FAILED_DEPENDENCY)
     else:
         message = {}
         message['image'] = ['This field is mandatory.']
 
     return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
 
+def __generate_recipe(text):
+
+    json_result = {}
+
+    json_result['name'] = __generate_name(text)
+    json_result['steps'] = __generate_steps(text)
+    json_result['is_lunch'] = True
+
+    return json_result
+
+def __generate_name(text):
+    if 'Ingredient' not in text[0]:
+        return text[0]
+    else:
+        return text[1]
+
+def __generate_steps(text):
+    steps = ""
+    steps_beginning = [a for a in text if "Preparaci" in a ][0]
+
+    for i in range(text.index(steps_beginning) + 1, text.index(text[-1]) + 1):
+        steps += text[i] + " "
+
+    return steps.split(".")
 
 class UserRecipeList(APIView):
     """
