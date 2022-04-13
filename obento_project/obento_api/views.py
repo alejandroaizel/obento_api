@@ -18,8 +18,6 @@ from django.db.models import Q, F
 import datetime
 import base64
 from django.core.files.base import ContentFile
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 
 @api_view(['GET', 'POST'])
 def recipes_list(request):
