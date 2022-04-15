@@ -557,20 +557,42 @@ class ShoppingList(APIView):
 
         shopping_list = get_user_ingredients(user_id)
         user_ingredients = shopping_list['ingredients']
-        # ingredient_id = recipe_ingredient_data['ingredient_id'] # TODO check with Alex if it's mandatory
-        recipe_id = recipe_ingredient_data['recipe_id']
-        recipe = Recipe.objects.get(id=recipe_id)
-        compound_recipe = get_compound(recipe)
-        recipe_ingredients = compound_recipe['ingredients']
-        for recipe_ingredient in recipe_ingredients:
-            if not any(ingredient['ingredient_id'] == recipe_ingredient['ingredient_id'] for ingredient in user_ingredients):
-                print(recipe_ingredient)
+
+        if 'recipe_id' in recipe_ingredient_data:
+            recipe_id = recipe_ingredient_data['recipe_id']
+            recipe = Recipe.objects.get(id=recipe_id)
+            compound_recipe = get_compound(recipe)
+            recipe_ingredients = compound_recipe['ingredients']
+            for recipe_ingredient in recipe_ingredients:
+                if not any(ingredient['ingredient_id'] == recipe_ingredient['ingredient_id'] for ingredient in user_ingredients):
+                    user_ingredient = Add.objects.create(
+                        user = user_id,
+                        ingredient_id = recipe_ingredient['ingredient_id'],
+                        quantity = recipe_ingredient['quantity']
+                    )
+                    user_ingredient.save()
+                else:
+                    Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient['ingredient_id'])\
+                               .update(quantity=F('quantity') + recipe_ingredient['quantity'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        elif 'ingredient_id' and 'quantity' in recipe_ingredient_data:
+            print(user_ingredients)
+            if not any(ingredient['ingredient_id'] == recipe_ingredient_data['ingredient_id'] for ingredient in user_ingredients):
+                print("NO EXISTE y SE CREA")
                 user_ingredient = Add.objects.create(
-                    user = user_id,
-                    ingredient_id = recipe_ingredient['ingredient_id'],
-                    quantity = recipe_ingredient['quantity']
-                )
+                        user = user_id,
+                        ingredient_id = recipe_ingredient_data['ingredient_id'],
+                        quantity = recipe_ingredient_data['quantity']
+                    )
                 user_ingredient.save()
             else:
-                Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient['ingredient_id']).update(quantity=recipe_ingredient['quantity'])
-        return Response(status=status.HTTP_204_NO_CONTENT)
+                print("EXISTE y SE ACTUALIZA")
+                Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient_data['ingredient_id'])\
+                           .update(quantity=F('quantity') + recipe_ingredient_data['quantity'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            message = {}
+            message['recipe_id'] = ["This field is required."]
+            message['ingredient_id'] = ["This field is required."]
+            message['quantity'] = ["This field is required."]
+            return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
