@@ -14,6 +14,10 @@ from rest_framework.views import APIView
 from rest_framework import viewsets, generics, status
 from obento_api.models import *
 from obento_api.serializers import *
+
+import boto3
+import json
+
 from django.db.models import Q, F
 import datetime
 import base64
@@ -94,6 +98,98 @@ def get_delete_recipe(request, recipe_id):
         except Recipe.DoesNotExist:
             return JsonResponse({'message': f'Recipe {recipe_id} doesn\'t exist.'}, status=status.HTTP_404_BAD_REQUEST)
 
+
+@api_view(['POST'])
+def generate_recipe(request):
+    try:
+        recipe_image = JSONParser().parse(request)
+    except:
+        return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if 'image' in recipe_image:
+        client = boto3.client('textract')
+
+        image_b64_decode = base64.b64decode(recipe_image['image'])
+        bytes = bytearray(image_b64_decode)
+
+        # response = client.analyze_document(
+        #     Document = {
+        #         'Bytes': bytes
+        #     },
+        #     FeatureTypes = [
+        #         'TABLES',
+        #         'FORMS'
+        #     ]
+        # )
+
+        # TODO delete when this feature is merged into dev
+        with open('/home/miguel/github/obento_api/receipt-report-gambas-py.json', 'r') as f:
+            response = json.load(f)
+
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            blocks = response['Blocks']
+            lines = [line for line in blocks if line['BlockType'] == "LINE"]
+            text = [line['Text'] for line in lines]
+            recipe_json = __generate_recipe(text)
+            return JsonResponse(recipe_json, status=status.HTTP_200_OK, safe=False)
+        else:
+            message = {}
+            message['error'] = ['There was an error processing the image']
+            return JsonResponse(message, status=status.HTTP_424_FAILED_DEPENDENCY)
+    else:
+        message = {}
+        message['image'] = ['This field is mandatory.']
+
+    return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+
+def __generate_recipe(text):
+
+    json_result = {}
+
+    json_result['name'] = __generate_name(text)
+    json_result['steps'] = __generate_steps(text)
+    json_result['ingredients'] = __generate_ingredients(text)
+    json_result['is_lunch'] = True
+
+    return json_result
+
+def __generate_name(text):
+    if 'Ingredient' not in text[0]:
+        return text[0]
+    else:
+        return text[1]
+
+def __generate_ingredients(text):
+    ingredients = []
+
+    ingredients_beginning = [a for a in text if "Ingredien" in a ][0]
+    steps_ending = [a for a in text if "Preparaci" in a ][0]
+
+    for i in range(text.index(ingredients_beginning) + 1, text.index(steps_ending)):
+        ingredient_line = text[i]
+        splitted_ingredient_line = ingredient_line.split(" ")
+        if len(splitted_ingredient_line) == 1:
+            # TODO try to add a ingredient without quantity
+            ingredient = Ingredient.objects.filter(name__icontains=splitted_ingredient_line[0]).first()
+            if ingredient:
+                ingredients.append({"ingredient_id": ingredient.id})
+        else:
+            ingredient_quantity = splitted_ingredient_line[0]
+            ingredient_name = splitted_ingredient_line[-1]
+            ingredient = Ingredient.objects.filter(name__icontains=ingredient_name).first()
+            if ingredient:
+                ingredients.append({"ingredient_id": ingredient.id, "quantity": ingredient_quantity})
+
+    return ingredients
+
+def __generate_steps(text):
+    steps = ""
+    steps_beginning = [a for a in text if "Preparaci" in a ][0]
+
+    for i in range(text.index(steps_beginning) + 1, text.index(text[-1]) + 1):
+        steps += text[i] + " "
+
+    return steps.split(".")
 
 class UserRecipeList(APIView):
     """
@@ -300,6 +396,7 @@ class ScheduleList(APIView):
             delta = datetime.date(end_date.year, end_date.month, end_date.day) - \
                 datetime.date(start_date.year,
                                 start_date.month, start_date.day)
+
 
             q = Q()
             if 'is_lunch' in schedule_data:

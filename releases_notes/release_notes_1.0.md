@@ -12,7 +12,7 @@
 - Added filter "category" to allow retrieve recipes by category.
 - Added field to upload recipe image.
 - Added endpoints to get and update shopping list
-
+- Added endpoint for get recipe by OCR
 
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->
