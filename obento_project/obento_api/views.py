@@ -173,6 +173,26 @@ def get_compound(recipe):
 
     return recipe_data
 
+def get_user_ingredients(user):
+    total_price = 0.0
+    ingredients = []
+
+    for ingredient in Add.objects.raw('''SELECT A.id, A.ingredient_id, A.quantity,
+                                         INGREDIENT.name, INGREDIENT.unitary_price
+                                         FROM `add` AS A
+                                         INNER JOIN ingredient AS INGREDIENT
+                                         ON A.ingredient_id = INGREDIENT.id
+                                         WHERE A.`user` = %s
+                                      ''', [user]):
+        ingredient_dict = vars(ingredient)
+        ingredient_dict.pop('_state')
+        ingredient_dict.pop('id')
+        ingredient_dict['price'] = ingredient_dict['quantity'] * ingredient_dict['unitary_price']
+        total_price += ingredient_dict['price']
+        ingredients.append(ingredient_dict)
+
+    return {'ingredients': ingredients, 'total_price': total_price}
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -321,7 +341,7 @@ class ScheduleDetail(APIView):
     """
     Retrieve or delete a schedule by ID
     """
-    
+
     def get(self, request, menu_id):
         schedule = None
 
@@ -422,7 +442,7 @@ class UserScheduleList(APIView):
                 return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
 
         return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
-        
+
 class ScoreList(APIView):
     """
     List all scores filter by user_id, recipe_id or num_stars
@@ -520,3 +540,59 @@ def base64_to_image(image_base64):
     image = ContentFile(base64.b64decode(imgstr))
 
     return image, ext
+class ShoppingList(APIView):
+    """
+    Retrieves and updates the shopping list according to the recipes or menus
+    """
+
+    def get(self, request, user_id, format=None):
+        result = get_user_ingredients(user_id)
+        return JsonResponse(result, status=status.HTTP_200_OK, safe=False)
+
+    def put(self, request, user_id, format=None):
+        try:
+                recipe_ingredient_data = JSONParser().parse(request)
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        shopping_list = get_user_ingredients(user_id)
+        user_ingredients = shopping_list['ingredients']
+
+        if 'recipe_id' in recipe_ingredient_data:
+            recipe_id = recipe_ingredient_data['recipe_id']
+            recipe = Recipe.objects.get(id=recipe_id)
+            compound_recipe = get_compound(recipe)
+            recipe_ingredients = compound_recipe['ingredients']
+            for recipe_ingredient in recipe_ingredients:
+                if not any(ingredient['ingredient_id'] == recipe_ingredient['ingredient_id'] for ingredient in user_ingredients):
+                    user_ingredient = Add.objects.create(
+                        user = user_id,
+                        ingredient_id = recipe_ingredient['ingredient_id'],
+                        quantity = recipe_ingredient['quantity']
+                    )
+                    user_ingredient.save()
+                else:
+                    Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient['ingredient_id'])\
+                               .update(quantity=F('quantity') + recipe_ingredient['quantity'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        elif 'ingredient_id' and 'quantity' in recipe_ingredient_data:
+            print(user_ingredients)
+            if not any(ingredient['ingredient_id'] == recipe_ingredient_data['ingredient_id'] for ingredient in user_ingredients):
+                print("NO EXISTE y SE CREA")
+                user_ingredient = Add.objects.create(
+                        user = user_id,
+                        ingredient_id = recipe_ingredient_data['ingredient_id'],
+                        quantity = recipe_ingredient_data['quantity']
+                    )
+                user_ingredient.save()
+            else:
+                print("EXISTE y SE ACTUALIZA")
+                Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient_data['ingredient_id'])\
+                           .update(quantity=F('quantity') + recipe_ingredient_data['quantity'])
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            message = {}
+            message['recipe_id'] = ["This field is required."]
+            message['ingredient_id'] = ["This field is required."]
+            message['quantity'] = ["This field is required."]
+            return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)

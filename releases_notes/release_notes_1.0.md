@@ -11,6 +11,7 @@
 - Added filters "is_lunch" and "discarded_ingredients" to allow make custom menus.
 - Added filter "category" to allow retrieve recipes by category.
 - Added field to upload recipe image.
+- Added endpoints to get and update shopping list
 
 
 ### Issues solved in 1.0:

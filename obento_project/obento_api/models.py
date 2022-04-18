@@ -74,8 +74,18 @@ class Compound(models.Model):
     quantity = models.FloatField()
 
     def __str__(self):
-        return self.name
+        return "Ingredient: " + self.ingredient.name + " Recipe: " + self.recipe.name
 
+class Add(models.Model):
+    class Meta:
+        unique_together = (('user', 'ingredient'),)
+        db_table = 'add'
+    user = models.BigIntegerField()
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.SET_NULL, null=True)
+    quantity = models.FloatField()
+
+    def __str__(self):
+        return "User: " + self.user.email + " Ingredient: " + self.ingredient.name
 
 class Schedule(models.Model):
     class Meta:
