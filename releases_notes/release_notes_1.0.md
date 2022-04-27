@@ -20,6 +20,6 @@
 - Fixed bug that did not allow "steps" to be a vector.
 - Fixed local and production environments in application settings.
 - Fixed error that allowed create two menus to the same day.
-
+- Refactored GET requests with body by query params
 ### List of known issues in 1.0:
 <!--List of bugs and errors not solved at the time of the release !-->
