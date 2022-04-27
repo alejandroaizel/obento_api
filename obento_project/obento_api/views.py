@@ -30,14 +30,13 @@ def recipes_list(request):
     """
 
     if request.method == 'GET':
-        try:
-            recipe_data = JSONParser().parse(request)
-        except:
-            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        param_category = request.GET.get('category')
 
         q = Q()
-        if 'category' in recipe_data:
-            q &= Q(category=recipe_data['category'])
+        print(param_category)
+        if param_category is not None:
+            q &= Q(category=param_category)
 
         recipes = Recipe.objects.filter(q)
         result = []
@@ -112,19 +111,15 @@ def generate_recipe(request):
         image_b64_decode = base64.b64decode(recipe_image['image'])
         bytes = bytearray(image_b64_decode)
 
-        # response = client.analyze_document(
-        #     Document = {
-        #         'Bytes': bytes
-        #     },
-        #     FeatureTypes = [
-        #         'TABLES',
-        #         'FORMS'
-        #     ]
-        # )
-
-        # TODO delete when this feature is merged into dev
-        with open('/home/miguel/github/obento_api/receipt-report-gambas-py.json', 'r') as f:
-            response = json.load(f)
+        response = client.analyze_document(
+            Document = {
+                'Bytes': bytes
+            },
+            FeatureTypes = [
+                'TABLES',
+                'FORMS'
+            ]
+        )
 
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             blocks = response['Blocks']
@@ -336,31 +331,31 @@ class ScheduleList(APIView):
 
     def get(self, request):
 
-        try:
-            schedule_data = JSONParser().parse(request)
-        except:
-            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+        param_user = request.GET.get('user')
+        param_start_date = request.GET.get('start_date')
+        param_end_date = request.GET.get('end_date')
+        param_is_lunch = request.GET.get('is_lunch')
 
         q = Q()
-        if 'user' in schedule_data:
-            q &= Q(user=schedule_data['user'])
+        if param_user is not None:
+            q &= Q(user=param_user)
         else:
             message = {}
             message['user'] = ["This field is required."]
             return Response(message, status=status.HTTP_400_BAD_REQUEST)
 
-        if 'start_date' in schedule_data:
+        if param_start_date is not None:
             start_date = datetime.datetime.strptime(
-                schedule_data['start_date'], '%d-%m-%y')
+                param_start_date, '%d-%m-%y')
             q &= Q(date__gte=start_date)
 
-        if 'end_date' in schedule_data:
+        if param_end_date is not None:
             end_date = datetime.datetime.strptime(
-                schedule_data['end_date'], '%d-%m-%y')
+                param_end_date, '%d-%m-%y')
             q &= Q(date__lte=end_date)
 
-        if 'is_lunch' in schedule_data:
-            q &= Q(is_lunch=schedule_data['is_lunch'])
+        if param_is_lunch is not None:
+            q &= Q(is_lunch=param_is_lunch)
 
         schedules = Schedule.objects.filter(q)
         schedules_data = []
@@ -459,7 +454,6 @@ class ScheduleDetail(APIView):
         except Schedule.DoesNotExist:
             return JsonResponse({'message': f'Menu {menu_id} doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
 
-
 class UserScheduleList(APIView):
     """
     Retrieve user recipes
@@ -467,66 +461,24 @@ class UserScheduleList(APIView):
 
     def get(self, request, user_id):
 
-        try:
-            schedule_data = JSONParser().parse(request)
-            schedule_data['user'] = user_id
-        except:
-            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+        param_date = request.GET.get('date')
+        param_is_lunch = request.GET.get('is_lunch')
+        param_user = request.GET.get('user')
 
         message = {}
 
-        if 'date' not in schedule_data:
+        if param_date is None:
             message['date'] = ["This field is required."]
 
-        if 'is_lunch' not in schedule_data:
+        if param_is_lunch is None:
             message['is_lunch'] = ["This field is required."]
 
         if not message:
             try:
                 date = datetime.datetime.strptime(
-                    schedule_data['date'], '%d-%m-%y')
+                    param_date, '%d-%m-%y')
                 schedule = Schedule.objects.filter(
-                    user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
-            except Schedule.DoesNotExist:
-                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-            if len(schedule) == 1:
-                schedule_serializer = ScheduleSerializer(schedule[0])
-                schedule_data = schedule_serializer.data
-                schedule_data['recipe'] = get_compound(schedule[0].recipe)
-                return JsonResponse(schedule_data, status=status.HTTP_200_OK, safe=False)
-            elif len(schedule) == 0:
-                return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-        return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
-
-class UserScheduleList(APIView):
-    """
-    Retrieve user recipes
-    """
-
-    def get(self, request, user_id):
-
-        try:
-            schedule_data = JSONParser().parse(request)
-            schedule_data['user'] = user_id
-        except:
-            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        message = {}
-
-        if 'date' not in schedule_data:
-            message['date'] = ["This field is required."]
-
-        if 'is_lunch' not in schedule_data:
-            message['is_lunch'] = ["This field is required."]
-
-        if not message:
-            try:
-                date = datetime.datetime.strptime(
-                    schedule_data['date'], '%d-%m-%y')
-                schedule = Schedule.objects.filter(
-                    user=schedule_data['user'], date=date, is_lunch=schedule_data['is_lunch'])
+                    user=param_user, date=date, is_lunch=param_is_lunch)
             except Schedule.DoesNotExist:
                 return JsonResponse({'message': f'Menu doesn\'t exist.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -547,24 +499,24 @@ class ScoreList(APIView):
 
     def get(self, request):
 
-        try:
-            score_data = JSONParser().parse(request)
-        except:
-            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+        param_user_id = request.GET.get('user_id')
+        param_recipe_id = request.GET.get('recipe_id')
+        param_num_stars = request.GET.get('num_stars')
+        param_order_by = request.GET.get('order_by')
 
         q = Q()
-        if 'user_id' in score_data:
-            q &= Q(user=score_data['user_id'])
+        if param_user_id is not None:
+            q &= Q(user=param_user_id)
 
-        if 'recipe_id' in score_data:
-            q &= Q(recipe=score_data['recipe_id'])
+        if param_recipe_id is not None:
+            q &= Q(recipe=param_recipe_id)
 
-        if 'num_stars' in score_data:
-            q &= Q(num_stars=score_data['num_stars'])
+        if param_num_stars is not None:
+            q &= Q(num_stars=param_num_stars)
 
-        if 'order_by' in score_data:
+        if param_order_by is not None:
             scores = Score.objects.filter(q).order_by(
-                '-'+score_data['order_by'])[:10]
+                '-'+param_order_by)[:10]
         else:
             scores = Score.objects.filter(q)
 
@@ -576,7 +528,6 @@ class ScoreList(APIView):
             scores_data.append(score_data)
 
         return JsonResponse(scores_data, status=status.HTTP_200_OK, safe=False)
-
 
 class ScoreCreate(APIView):
     """
