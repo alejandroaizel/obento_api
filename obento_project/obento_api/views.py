@@ -111,19 +111,15 @@ def generate_recipe(request):
         image_b64_decode = base64.b64decode(recipe_image['image'])
         bytes = bytearray(image_b64_decode)
 
-        # response = client.analyze_document(
-        #     Document = {
-        #         'Bytes': bytes
-        #     },
-        #     FeatureTypes = [
-        #         'TABLES',
-        #         'FORMS'
-        #     ]
-        # )
-
-        # TODO delete when this feature is merged into dev
-        with open('/home/miguel/github/obento_api/receipt-report-gambas-py.json', 'r') as f:
-            response = json.load(f)
+        response = client.analyze_document(
+            Document = {
+                'Bytes': bytes
+            },
+            FeatureTypes = [
+                'TABLES',
+                'FORMS'
+            ]
+        )
 
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             blocks = response['Blocks']
