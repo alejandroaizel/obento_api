@@ -34,7 +34,7 @@ def recipes_list(request):
         param_category = request.GET.get('category')
 
         q = Q()
-        print(param_category)
+
         if param_category is not None:
             q &= Q(category=param_category)
 
@@ -624,9 +624,9 @@ class ShoppingList(APIView):
                                .update(quantity=F('quantity') + recipe_ingredient['quantity'])
             return Response(status=status.HTTP_204_NO_CONTENT)
         elif 'ingredient_id' and 'quantity' in recipe_ingredient_data:
-            print(user_ingredients)
+
             if not any(ingredient['ingredient_id'] == recipe_ingredient_data['ingredient_id'] for ingredient in user_ingredients):
-                print("NO EXISTE y SE CREA")
+
                 user_ingredient = Add.objects.create(
                         user = user_id,
                         ingredient_id = recipe_ingredient_data['ingredient_id'],
@@ -634,7 +634,6 @@ class ShoppingList(APIView):
                     )
                 user_ingredient.save()
             else:
-                print("EXISTE y SE ACTUALIZA")
                 Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient_data['ingredient_id'])\
                            .update(quantity=F('quantity') + recipe_ingredient_data['quantity'])
             return Response(status=status.HTTP_204_NO_CONTENT)
