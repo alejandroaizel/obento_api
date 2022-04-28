@@ -634,8 +634,11 @@ class ShoppingList(APIView):
                     )
                 user_ingredient.save()
             else:
-                Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient_data['ingredient_id'])\
-                           .update(quantity=F('quantity') + recipe_ingredient_data['quantity'])
+                if recipe_ingredient_data['quantity'] != 0:
+                    Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient_data['ingredient_id'])\
+                               .update(quantity=recipe_ingredient_data['quantity'])
+                else:
+                    Add.objects.filter(user=user_id, ingredient_id=recipe_ingredient_data['ingredient_id']).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             message = {}
