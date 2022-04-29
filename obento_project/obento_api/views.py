@@ -1,7 +1,7 @@
 # views.py
 
 from unicodedata import category
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.models import User
 from rest_framework import viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -17,6 +17,7 @@ from obento_api.serializers import *
 
 import boto3
 import json
+from icalendar import Calendar, Event, vCalAddress, vText
 
 from django.db.models import Q, F
 import datetime
@@ -646,3 +647,30 @@ class ShoppingList(APIView):
             message['ingredient_id'] = ["This field is required."]
             message['quantity'] = ["This field is required."]
             return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+
+class ExportMenu(APIView):
+    def post(self, request):
+        try:
+            schedule_list = JSONParser().parse(request)
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        param_user = request.GET.get('user')
+        if param_user is None:
+            return JsonResponse({'required query param': 'user'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            user = User.objects.get(id=param_user)
+            cal = Calendar()
+            cal.add('attendee', user.name)
+            event = Event()
+            for schedule in schedule_list:
+                recipe = schedule.recipe
+                recipe_date = schedule.date
+                event.add('summary', recipe.name)
+                event.add('dtstart', recipe_date)
+                event.add('dtend', recipe_date+1)
+                cal.add_component(event)
+
+            response = HttpResponse(cal.as_string(), mimetype="text/calendar")
+            response['Content-Disposition'] = 'attachment; filename=weekly_menu.ics'
+            return response
