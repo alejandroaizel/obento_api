@@ -651,26 +651,42 @@ class ShoppingList(APIView):
 class ExportMenu(APIView):
     def post(self, request):
         try:
-            schedule_list = JSONParser().parse(request)
+            params_menu = JSONParser().parse(request)
         except:
             return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        param_user = request.GET.get('user')
+        param_user = params_menu['user_id']
         if param_user is None:
-            return JsonResponse({'required query param': 'user'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'required body param': 'user'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             user = User.objects.get(id=param_user)
             cal = Calendar()
-            cal.add('attendee', user.name)
+            cal.add('attendee', user.first_name)
             event = Event()
-            for schedule in schedule_list:
-                recipe = schedule.recipe
-                recipe_date = schedule.date
-                event.add('summary', recipe.name)
-                event.add('dtstart', recipe_date)
-                event.add('dtend', recipe_date+1)
+            for schedule in params_menu['recipes']:
+                event = _schedule_to_ical_event(schedule)
                 cal.add_component(event)
 
-            response = HttpResponse(cal.as_string(), mimetype="text/calendar")
+            response = HttpResponse(cal.to_ical(), content_type="text/calendar; charset=utf-8")
             response['Content-Disposition'] = 'attachment; filename=weekly_menu.ics'
             return response
+
+def _schedule_to_ical_event(schedule):
+    event = Event()
+    recipe = schedule['recipe']
+    event.add('summary', recipe['name'])
+    schedule_date = schedule['date']
+    start_meal = 0
+    offset = 1
+    datetime_obj = datetime.datetime.strptime(
+                schedule_date, '%Y-%m-%dT%H:%M:%SZ')
+    if schedule['is_lunch'] == True:
+        start_hour = 14
+    else:
+        start_hour = 21
+    end_hour = start_hour+offset
+    start_meal = datetime_obj + datetime.timedelta(hours=start_hour)
+    end_meal = datetime_obj + datetime.timedelta(hours=end_hour)
+    event.add('dtstart', start_meal)
+    event.add('dtend', end_meal)
+    return event
