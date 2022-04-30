@@ -13,6 +13,7 @@
 - Added field to upload recipe image.
 - Added endpoints to get and update shopping list
 - Added endpoint for get recipe by OCR
+- Added endpoint for export weekly menus
 
 ### Issues solved in 1.0:
 <!--List of bugs and errors solved !-->

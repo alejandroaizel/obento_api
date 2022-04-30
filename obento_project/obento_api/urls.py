@@ -31,5 +31,6 @@ urlpatterns = [
     path('menus/<int:menu_id>', views.ScheduleDetail.as_view(), name='menu_detail'),
     path('scores', views.ScoreList.as_view(), name='score_list'),
     path('user/<int:user_id>/shopping_list', views.ShoppingList.as_view(), name = 'shopping_list'),
-    path('user/<int:user_id>/shopping_list', views.ShoppingList.as_view(http_method_names=['put']), name = 'shopping_list')
+    path('user/<int:user_id>/shopping_list', views.ShoppingList.as_view(http_method_names=['put']), name = 'shopping_list'),
+    path('export_menu', views.ExportMenu.as_view(http_method_names=['post']), name = 'export_menu')
 ]

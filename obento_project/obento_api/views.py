@@ -1,7 +1,7 @@
 # views.py
 
 from unicodedata import category
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.models import User
 from rest_framework import viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -17,6 +17,7 @@ from obento_api.serializers import *
 
 import boto3
 import json
+from icalendar import Calendar, Event, vCalAddress, vText
 
 from django.db.models import Q, F
 import datetime
@@ -646,3 +647,46 @@ class ShoppingList(APIView):
             message['ingredient_id'] = ["This field is required."]
             message['quantity'] = ["This field is required."]
             return JsonResponse(message, status=status.HTTP_400_BAD_REQUEST)
+
+class ExportMenu(APIView):
+    def post(self, request):
+        try:
+            params_menu = JSONParser().parse(request)
+        except:
+            return JsonResponse({'message': 'Invalid body.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        param_user = params_menu['user_id']
+        if param_user is None:
+            return JsonResponse({'required body param': 'user'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            user = User.objects.get(id=param_user)
+            cal = Calendar()
+            cal.add('attendee', user.first_name)
+            event = Event()
+            for schedule in params_menu['recipes']:
+                event = _schedule_to_ical_event(schedule)
+                cal.add_component(event)
+
+            response = HttpResponse(cal.to_ical(), content_type="text/calendar; charset=utf-8")
+            response['Content-Disposition'] = 'attachment; filename=weekly_menu.ics'
+            return response
+
+def _schedule_to_ical_event(schedule):
+    event = Event()
+    recipe = schedule['recipe']
+    event.add('summary', recipe['name'])
+    schedule_date = schedule['date']
+    start_meal = 0
+    offset = 1
+    datetime_obj = datetime.datetime.strptime(
+                schedule_date, '%Y-%m-%dT%H:%M:%SZ')
+    if schedule['is_lunch'] == True:
+        start_hour = 14
+    else:
+        start_hour = 21
+    end_hour = start_hour+offset
+    start_meal = datetime_obj + datetime.timedelta(hours=start_hour)
+    end_meal = datetime_obj + datetime.timedelta(hours=end_hour)
+    event.add('dtstart', start_meal)
+    event.add('dtend', end_meal)
+    return event
