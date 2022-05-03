@@ -19,7 +19,7 @@ import boto3
 import json
 from icalendar import Calendar, Event, vCalAddress, vText
 
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum, Value
 import datetime
 import base64
 from django.core.files.base import ContentFile
@@ -386,6 +386,10 @@ class ScheduleList(APIView):
         start_date = datetime.datetime.strptime(dates_str[0], '%d-%m-%y')
         end_date = datetime.datetime.strptime(dates_str[1], '%d-%m-%y')
         schedule_data['date'] = start_date
+
+        if schedule_data['is_lunch'] is None:
+            schedule_data.pop('is_lunch')
+
         schedule_serializer = ScheduleSerializer(data=schedule_data)
 
         if schedule_serializer.is_valid():
@@ -393,10 +397,20 @@ class ScheduleList(APIView):
                 datetime.date(start_date.year,
                                 start_date.month, start_date.day)
 
+            num_days = self.RECIPES_PER_DAY
+            is_lunch = True
+            lunch = True
+            dinner = False
 
             q = Q()
             if 'is_lunch' in schedule_data:
                 q &= Q(is_lunch=schedule_data['is_lunch'])
+                num_days -= 1
+                if schedule_data['is_lunch']:
+                    dinner = True
+                else:
+                    lunch = False
+                    is_lunch = False
 
             # if "ingredients_blacklist" in schedule_data:
                 # TODO: Retrieve user blacklist and discard the ingredients
@@ -404,24 +418,28 @@ class ScheduleList(APIView):
             if 'discarded_ingredients' in schedule_data:
                 q &= ~Q(ingredients__in=schedule_data['discarded_ingredients'])
 
-            num_recipes = (delta.days + 1) * self.RECIPES_PER_DAY
-            recipes = Recipe.objects.filter(q).order_by('?').distinct()[:num_recipes]
+            if 'max_time' in schedule_data:
+                q &= Q(cooking_time__lte=schedule_data['max_time'])
 
+            if 'max_price' in schedule_data:
+                q &= Q(estimated_cost__lte=schedule_data['max_price'])
+
+            num_recipes = (delta.days + 1) * num_days
+            recipes = Recipe.objects.annotate(estimated_cost=Sum(F('ingredients__unitary_price') * F('compound__quantity'))).filter(q).order_by('?').distinct()[:num_recipes]
             result = []
 
             i = 1
-            is_lunch = True
             for recipe in recipes:
                 menu_id = schedule_serializer.save(schedule_data, start_date,
                                                     recipe, is_lunch)
 
                 result.append(menu_id)
 
-                is_lunch = False
+                is_lunch = dinner
 
-                if i % 2 == 0:
+                if i % 2 == 0 or lunch == dinner:
                     start_date += datetime.timedelta(days=1)
-                    is_lunch = True
+                    is_lunch = lunch
 
                 i += 1
 
